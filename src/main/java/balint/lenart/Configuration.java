@@ -50,16 +50,45 @@ public class Configuration {
         }
 
         OutputStream os = new FileOutputStream(SETTINGS_FILE);
-        properties.store(os, "Saved at " + new Date());
+        properties.store(os, null);
     }
 
-    public static String get(String key) {
+    public static String get(String key) throws MissingKeyException {
+        if(!SETTINGS.containsKey(key)) {
+            throw new MissingKeyException("A megadott kulcs nincs regisztrálva!");
+        }
         return SETTINGS.get(key);
+    }
+
+    public static void set(String key, String value) throws MissingKeyException {
+        if(!SETTINGS.containsKey(key)) {
+            throw new MissingKeyException("A megadott kulcs nincs regisztrálva!");
+        }
+        SETTINGS.put(key, value);
+    }
+
+    public static void add(String key, String value) {
+        if(SETTINGS.containsKey(key)) {
+            throw new AlreadyExistsKeyException("A megadott kulcs már regisztrálva lett!");
+        }
+        SETTINGS.put(key, value);
     }
 
     private static void createDefaultConfiguration() throws IOException {
         URL defaultSettingsFileUrl = Configuration.class.getClassLoader().getResource("default-settings.properties");
         System.out.println(defaultSettingsFileUrl);
         FileUtils.copyURLToFile(defaultSettingsFileUrl, SETTINGS_FILE);
+    }
+
+    public static class MissingKeyException extends RuntimeException {
+        public MissingKeyException(String msg) {
+            super(msg);
+        }
+    }
+
+    public static class AlreadyExistsKeyException extends RuntimeException {
+        public AlreadyExistsKeyException(String msg) {
+            super(msg);
+        }
     }
 }
