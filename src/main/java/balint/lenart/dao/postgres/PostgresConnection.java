@@ -13,8 +13,8 @@ public class PostgresConnection {
 
     protected PostgresConnection() throws SQLException {
         connection = DriverManager.getConnection(
-                "jdbc:postgresql://" + Configuration.get("postgres.connection.host") + "/" +
-                        Configuration.get("postgres.connection.database"),
+                "jdbc:postgresql://" + Configuration.get("postgres.connection.host") + ":" + Configuration.get("postgres.connection.port") + "/"
+                        + Configuration.get("postgres.connection.database"),
                 Configuration.get("postgres.connection.username"),
                 Configuration.get("postgres.connection.password")
         );

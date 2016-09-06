@@ -5,13 +5,13 @@ import org.apache.commons.io.FileUtils;
 
 import java.io.*;
 import java.net.URL;
+import java.util.Date;
 import java.util.Map;
 import java.util.Properties;
 
 public class Configuration {
 
     private static final File SETTINGS_FILE = new File("settings.properties");
-
     private static final Map<String, String> SETTINGS = Maps.newHashMap();
 
     public static void loadFromFile() throws IOException {
@@ -38,6 +38,19 @@ public class Configuration {
                 }
             }
         }
+    }
+
+    public static void saveToFile() throws IOException {
+        SETTINGS_FILE.deleteOnExit();
+        SETTINGS_FILE.createNewFile();
+
+        Properties properties = new Properties();
+        for(Map.Entry<String, String> entry : SETTINGS.entrySet()) {
+            properties.setProperty(entry.getKey(), entry.getValue());
+        }
+
+        OutputStream os = new FileOutputStream(SETTINGS_FILE);
+        properties.store(os, "Saved at " + new Date());
     }
 
     public static String get(String key) {
