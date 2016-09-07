@@ -1,7 +1,6 @@
 
 .gitignore
 backups/mongo/
-src/test/
 target/
 szakdolgozat_eles.iml
 .idea/

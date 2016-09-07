@@ -14,6 +14,10 @@ public class Configuration {
     private static final File SETTINGS_FILE = new File("settings.properties");
     private static final Map<String, String> SETTINGS = Maps.newHashMap();
 
+    private Configuration() {
+
+    }
+
     public static void loadFromFile() throws IOException {
         if( !SETTINGS_FILE.exists() ) {
             createDefaultConfiguration();
