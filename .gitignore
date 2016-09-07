@@ -1,5 +1,3 @@
-
-.gitignore
 backups/mongo/
 target/
 szakdolgozat_eles.iml
