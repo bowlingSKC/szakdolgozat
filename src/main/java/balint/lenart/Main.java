@@ -1,6 +1,7 @@
 package balint.lenart;
 
 import balint.lenart.controllers.login.PasswordController;
+import balint.lenart.services.Migrator;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;

@@ -31,6 +31,14 @@ public class PostgresConnection {
         return connection;
     }
 
+    public void setAutoCommit(boolean value) throws SQLException {
+        connection.setAutoCommit(value);
+    }
+
+    public void commit() throws SQLException {
+        connection.commit();
+    }
+
     @Override
     protected void finalize() throws Throwable {
         super.finalize();

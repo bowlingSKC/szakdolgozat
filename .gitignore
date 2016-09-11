@@ -1,6 +1,5 @@
-backups/mongo/
-target/
-szakdolgozat_eles.iml
-.idea/
 backups/
+target/
+balint.lenart.iml
+.idea/
 settings.properties
