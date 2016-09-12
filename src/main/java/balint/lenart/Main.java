@@ -17,6 +17,7 @@ public class Main extends Application {
 
     public Main() throws SQLException {
         new Install().run();
+        new Migrator().restart();
     }
 
     @Override

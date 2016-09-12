@@ -3,6 +3,7 @@ package balint.lenart.model;
 public class User {
 
     private final String mongoId;
+    private Long postgresId;
     private final boolean isActive;
     private final String comment;
     private final String email;
@@ -22,6 +23,14 @@ public class User {
         this.fullName = fullName;
         this.password = password;
         this.type = type;
+    }
+
+    public void setPostgresId(Long postgresId) {
+        this.postgresId = postgresId;
+    }
+
+    public Long getPostgresId() {
+        return postgresId;
     }
 
     public String getMongoId() {

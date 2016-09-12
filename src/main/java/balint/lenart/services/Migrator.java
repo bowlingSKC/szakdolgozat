@@ -3,18 +3,21 @@ package balint.lenart.services;
 import balint.lenart.dao.mongo.MongoDeviceDAO;
 import balint.lenart.dao.mongo.MongoObservationDAO;
 import balint.lenart.dao.mongo.MongoUserDAO;
-import balint.lenart.dao.postgres.PostgresConnection;
-import balint.lenart.dao.postgres.PostgresDeviceDAO;
-import balint.lenart.dao.postgres.PostgresEpEventDAO;
-import balint.lenart.dao.postgres.PostgresUserDAO;
+import balint.lenart.dao.postgres.*;
+import balint.lenart.model.Device;
+import balint.lenart.model.Episode;
 import balint.lenart.model.User;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
+import org.apache.log4j.Logger;
+import org.apache.log4j.spi.LoggerFactory;
 
 import java.sql.SQLException;
 import java.util.List;
 
 public class Migrator extends Service<Boolean> {
+
+    private static final Logger LOGGER = Logger.getLogger(Migrator.class);
 
     private final MongoDeviceDAO mongoDeviceDAO;
     private final MongoObservationDAO mongoObservationDAO;
@@ -23,6 +26,8 @@ public class Migrator extends Service<Boolean> {
     private final PostgresDeviceDAO postgresDeviceDAO;
     private final PostgresEpEventDAO postgresEpEventDAO;
     private final PostgresUserDAO postgresUserDAO;
+    private final PostgresEpisodeDAO postgresEpisodeDAO;
+    private final PostgresMatchingTableDAO postgresMatchingTableDAO;
 
     private Long sumOfEntityInMongo;
 
@@ -33,6 +38,8 @@ public class Migrator extends Service<Boolean> {
         this.postgresDeviceDAO = new PostgresDeviceDAO();
         this.postgresEpEventDAO = new PostgresEpEventDAO();
         this.postgresUserDAO = new PostgresUserDAO();
+        this.postgresEpisodeDAO = new PostgresEpisodeDAO();
+        this.postgresMatchingTableDAO = new PostgresMatchingTableDAO();
     }
 
     @Override
@@ -49,21 +56,25 @@ public class Migrator extends Service<Boolean> {
 
         private boolean startProgress() {
             sumOfEntityInMongo = calculateMigrationsProcess();
+            int failEntityMigration = 0;
 
             try {
                 PostgresConnection.getInstance().setAutoCommit(false);
                 List<User> users = mongoUserDAO.getAllUser();
                 for(User user : users) {
                     try {
-                        postgresUserDAO.saveEntity(user);
-                        updateProgress();
+                        User persisted = postgresUserDAO.saveEntity(user);
+                        migrateDevices(persisted);
                         PostgresConnection.getInstance().commit();
                     } catch (Exception ex) {
-                        // log all exception and continue with next user
+                        // log all exception and continue with next use
+                        PostgresConnection.getInstance().rollback();
                         ex.printStackTrace();
+                        failEntityMigration++;
                     }
                 }
             } catch (Exception ex) {
+                // connection or setAutoCommit failure
                 ex.printStackTrace();
             } finally {
                 try {
@@ -73,15 +84,35 @@ public class Migrator extends Service<Boolean> {
                 }
             }
 
-            return false;
-        }
-
-        private void updateProgress() {
-            //updateProgress( getProgress() + 1, sumOfEntityInMongo );
+            System.out.println("Fail entity migration: " + failEntityMigration);
+            if( failEntityMigration == 0 ) {
+                LOGGER.info("Migracio sikeresen vegrehajtva hiba nelkul!");
+            } else {
+                LOGGER.warn("A migracio soran hiba lepett fel ...");
+            }
+            return failEntityMigration == 0;
         }
 
         private Long calculateMigrationsProcess() {
             return mongoDeviceDAO.count() + mongoObservationDAO.count() + mongoUserDAO.count();
+        }
+
+        private void migrateDevices(User owner) throws Exception {
+            List<Device> devices = mongoDeviceDAO.getDeviceByUser(owner);
+            if( devices.isEmpty() ) {
+                System.out.println("Found expert user without any devices");
+            } else {
+                for(Device device : devices) {
+                    Device persistedDevice = postgresDeviceDAO.saveEntity(device);
+                    Episode persistedEpisode = migrateEpisodes(owner, persistedDevice);
+                    postgresMatchingTableDAO.insertToEpisodeDevice(persistedEpisode, persistedDevice);
+                }
+            }
+        }
+
+        private Episode migrateEpisodes(User user, Device device) throws SQLException {
+            Episode episode = new Episode(user, mongoObservationDAO.getLatestObservationDateByDevice(device));
+            return postgresEpisodeDAO.saveEntity(episode);
         }
     }
 

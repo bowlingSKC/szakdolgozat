@@ -39,6 +39,10 @@ public class PostgresConnection {
         connection.commit();
     }
 
+    public void rollback() throws SQLException {
+        connection.rollback();
+    }
+
     @Override
     protected void finalize() throws Throwable {
         super.finalize();

@@ -38,5 +38,4 @@ public class MongoUserDAO extends MongoConnection {
         });
         return users;
     }
-
 }

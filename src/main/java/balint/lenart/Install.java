@@ -8,6 +8,7 @@ public class Install {
     public void run() {
         createBackupDirectories();
         readConfigurations();
+        createLogDirectories();
     }
 
     private void readConfigurations() {
@@ -30,6 +31,13 @@ public class Install {
         File mongoBackup = new File("backups/mongo");
         if(!mongoBackup.isDirectory()) {
             mongoBackup.mkdir();
+        }
+    }
+
+    private void createLogDirectories() {
+        File logDirectory = new File("logs");
+        if(!logDirectory.isDirectory()) {
+            logDirectory.mkdir();
         }
     }
 

@@ -5,10 +5,13 @@ import balint.lenart.model.User;
 import balint.lenart.utils.DbUtil;
 import balint.lenart.utils.Tuple;
 import balint.lenart.utils.UserUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Random;
 
 public class PostgresUserDAO {
 
@@ -23,19 +26,26 @@ public class PostgresUserDAO {
         return result.getLong(1);
     }
 
-    public void saveEntity(User user) throws SQLException {
-        Statement statement = PostgresConnection.getInstance().getConnection().createStatement();
+    public User saveEntity(User user) throws SQLException {
+        PreparedStatement statement = PostgresConnection.getInstance().getConnection().prepareStatement("" +
+                "INSERT INTO " + getTableName() + "(user_type_code, firstname, family_name, email, ds_id, user_desc) VALUES" +
+                "(?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
         Tuple<String, String> nameByUser = UserUtils.getNameByUser(user);
-        statement.execute(
-                "INSERT INTO " + getTableName() + "(user_type_code, firstname, family_name, email, ds_id, user_desc) VALUES (" +
-                        0 + ", " +
-                        DbUtil.getQuotedString(nameByUser.getFirst()) + "," +
-                        DbUtil.getQuotedString(nameByUser.getSecond()) + ", " +
-                        DbUtil.getQuotedString(user.getEmail()) + ", " +
-                        DbUtil.getQuotedString(user.getMongoId()) + ", " +
-                        DbUtil.getQuotedString(user.getComment()) +
-                        ");"
-        );
+
+        statement.setInt(1, 0);
+        statement.setString(2, nameByUser.getFirst());
+        statement.setString(3, nameByUser.getSecond());
+        statement.setString(4, user.getEmail());
+        statement.setString(5, user.getMongoId());
+        statement.setString(6, user.getComment());
+        statement.execute();
+
+        ResultSet generatedKeys = statement.getGeneratedKeys();
+        if( generatedKeys.next() ) {
+            user.setPostgresId( generatedKeys.getLong(1) );
+        }
+
+        return user;
     }
 
 }

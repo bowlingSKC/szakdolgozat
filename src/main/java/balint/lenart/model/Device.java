@@ -7,6 +7,7 @@ public class Device {
     private final String description;
     private final String hwId;
     private final int devTypeCode;
+    private Long postgresId;
 
     public Device(String mongoId, String name, String description, String hwId, int devTypeCode) {
         this.mongoId = mongoId;
@@ -34,5 +35,13 @@ public class Device {
 
     public int getDevTypeCode() {
         return devTypeCode;
+    }
+
+    public Long getPostgresId() {
+        return postgresId;
+    }
+
+    public void setPostgresId(Long postgresId) {
+        this.postgresId = postgresId;
     }
 }
