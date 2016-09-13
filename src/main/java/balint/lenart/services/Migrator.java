@@ -7,6 +7,7 @@ import balint.lenart.dao.postgres.*;
 import balint.lenart.model.Device;
 import balint.lenart.model.Episode;
 import balint.lenart.model.User;
+import balint.lenart.model.observations.Observation;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import org.apache.log4j.Logger;
@@ -106,6 +107,7 @@ public class Migrator extends Service<Boolean> {
                     Device persistedDevice = postgresDeviceDAO.saveEntity(device);
                     Episode persistedEpisode = migrateEpisodes(owner, persistedDevice);
                     postgresMatchingTableDAO.insertToEpisodeDevice(persistedEpisode, persistedDevice);
+                    migrateObservations(persistedEpisode, persistedDevice);
                 }
             }
         }
@@ -113,6 +115,15 @@ public class Migrator extends Service<Boolean> {
         private Episode migrateEpisodes(User user, Device device) throws SQLException {
             Episode episode = new Episode(user, mongoObservationDAO.getLatestObservationDateByDevice(device));
             return postgresEpisodeDAO.saveEntity(episode);
+        }
+
+        private void migrateObservations(Episode episode, Device device) throws SQLException {
+            List<Observation> observations = mongoObservationDAO.getObservationsByDevice(device);
+            observations.forEach(item -> item.setEpisode(episode));
+
+            for(Observation observation : observations) {
+                postgresEpEventDAO.saveEntity(observation);
+            }
         }
     }
 

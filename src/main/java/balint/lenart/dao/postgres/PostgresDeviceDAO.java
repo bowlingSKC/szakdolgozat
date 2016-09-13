@@ -2,7 +2,6 @@ package balint.lenart.dao.postgres;
 
 import balint.lenart.Configuration;
 import balint.lenart.model.Device;
-import balint.lenart.model.User;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -20,9 +19,10 @@ public class PostgresDeviceDAO {
 
     public Device saveEntity(Device device) throws SQLException {
         PreparedStatement statement = PostgresConnection.getInstance().getConnection().prepareStatement(
-                "INSERT INTO " + getTableName() + "(hw_serial, dev_type_code) VALUES(?, ?)", Statement.RETURN_GENERATED_KEYS);
+                "INSERT INTO " + getTableName() + "(hw_serial, input_type_code, ds_device_id) VALUES(?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
         statement.setString(1, device.getHwId());
         statement.setInt(2, 0);     // FIXME: 2016.09.12. replace this constant
+        statement.setString(3, device.getMongoId());
         statement.execute();
 
         ResultSet generatedKeys = statement.getGeneratedKeys();
