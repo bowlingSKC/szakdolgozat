@@ -2,6 +2,9 @@ package balint.lenart.dao.mongo;
 
 import balint.lenart.model.Device;
 import balint.lenart.model.observations.Observation;
+import balint.lenart.model.observations.ObservationType;
+import balint.lenart.model.observations.helper.EventAnamnesisIllness;
+import balint.lenart.services.Migrator;
 import balint.lenart.utils.ObservationUtils;
 import com.google.common.collect.Lists;
 import com.mongodb.DBRef;
@@ -40,7 +43,9 @@ public class MongoObservationDAO {
         List<Observation> observations = Lists.newArrayList();
         FindIterable<Document> documents = observationCollection.find(filter);
         for (Document document : documents) {
-            observations.add(ObservationUtils.fillByDocument(document));
+            if(Migrator.PASSED_TYPES.contains(ObservationUtils.getObservationTypeByDocument(document))) {
+                observations.add(ObservationUtils.fillByDocument(document));
+            }
         }
         observations.forEach(observation -> observation.setSourceDevice(device));
         return observations;

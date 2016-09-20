@@ -26,6 +26,8 @@ public class ObservationUtils {
             case PA_LOG_RECORD:
                 observation = createPhysicalEvent(document);
                 break;
+            case MEDICATION_RECORD:
+                observation = createMedicationEvent(document);
         }
 
         observation.setTsReceived( document.getDate("timestampIn") );
@@ -39,7 +41,7 @@ public class ObservationUtils {
         return observation;
     }
 
-    private static ObservationType getObservationTypeByDocument(Document document) {
+    public static ObservationType getObservationTypeByDocument(Document document) {
         String documentType = document.getString( TYPE_KEY );
         ObservationType[] observationTypes = ObservationType.values();
         for(ObservationType type : observationTypes) {
@@ -50,13 +52,26 @@ public class ObservationUtils {
         throw new RuntimeException("Unhandled observation type: " + documentType);
     }
 
+    private static Observation createMedicationEvent(Document document) {
+        Medication event = new Medication();
+        event.setMedicationId( document.get("content", Document.class).getInteger("medicationId") );
+        event.setQuantity( document.get("content", Document.class).getDouble("quantity") );
+        event.setUnitId( document.get("content", Document.class).getInteger("unitId") );
+        event.setUnitLabel( document.get("content", Document.class).getString("unitLabel") );
+        event.setAdminRouteCode( CodeUtils.getMedicationAdminRouteCode(document.get("context", Document.class).getString("routeOfAdministration")) );
+        event.setAdminLocCode( document.get("context", Document.class).getInteger("placeOfAdministration") );
+        event.setMealRelatedTypeCode(CodeUtils.getMedicationTimeOfAdministration(document.get("context", Document.class).getInteger("timeOfAdministration")));
+        event.setRelatedMealTypeCode( document.get("context", Document.class).getInteger("relatedTo") );
+        return event;
+    }
+
     private static PhysicalEvent createPhysicalEvent(Document document) {
         PhysicalEvent event = new PhysicalEvent();
         event.setPaId( document.get("content", Document.class).getInteger("itemId") );
         int energyConsumed = 0;
         Document mapContent = document.get("content", Document.class).get("content", Document.class);
         for(String key : mapContent.keySet()) {
-            energyConsumed += mapContent.getInteger(key);
+            energyConsumed += mapContent.getDouble(key);
         }
         event.setEnergyConsumed(energyConsumed);
         return event;

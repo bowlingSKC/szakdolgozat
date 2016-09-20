@@ -8,6 +8,8 @@ import balint.lenart.model.Device;
 import balint.lenart.model.Episode;
 import balint.lenart.model.User;
 import balint.lenart.model.observations.Observation;
+import balint.lenart.model.observations.ObservationType;
+import com.google.common.collect.Lists;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import org.apache.log4j.Logger;
@@ -31,6 +33,11 @@ public class Migrator extends Service<Boolean> {
     private final PostgresMatchingTableDAO postgresMatchingTableDAO;
 
     private Long sumOfEntityInMongo;
+
+    public static final List<ObservationType> PASSED_TYPES = Lists.newArrayList(
+            ObservationType.NOTIFICATION_RECORD, ObservationType.WEIGHT_RECORD, ObservationType.BLOOD_GLUCOSE_RECORD,
+            ObservationType.BLOOD_PRESSURE_RECORD, ObservationType.PA_LOG_RECORD, ObservationType.MEDICATION_RECORD
+    );
 
     public Migrator() {
         this.mongoDeviceDAO = new MongoDeviceDAO();

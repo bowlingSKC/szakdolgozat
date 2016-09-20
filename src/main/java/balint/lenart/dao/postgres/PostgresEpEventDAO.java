@@ -1,8 +1,7 @@
 package balint.lenart.dao.postgres;
 
 import balint.lenart.Configuration;
-import balint.lenart.model.observations.MissingFood;
-import balint.lenart.model.observations.Observation;
+import balint.lenart.model.observations.*;
 
 import java.sql.*;
 
@@ -21,25 +20,26 @@ public class PostgresEpEventDAO {
 
     public Observation saveEntity(Observation observation) throws SQLException {
         PreparedStatement statement = PostgresConnection.getInstance().getConnection().prepareStatement(
-                "INSERT INTO " + getSchemaName() + ".ep_event(episode_id, event_type_code, ts_specified, ts_recorded, " +
-                        "ts_received, ts_updated, ts_deleted, source_device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?);", Statement.RETURN_GENERATED_KEYS
+                "INSERT INTO " + getSchemaName() + ".ep_event(episode_id, event_type_code, status_code, ts_specified, ts_recorded, " +
+                        "ts_received, ts_updated, ts_deleted, source_device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);", Statement.RETURN_GENERATED_KEYS
         );
         statement.setLong(1, observation.getEpisode().getPostgresId());
         statement.setInt(2, 0);     // FIXME: 2016.09.13. replace this const
-        statement.setDate(3, new Date(observation.getTsSpecified().getTime()));
-        statement.setDate(4, new Date(observation.getTsRecorded().getTime()));
-        statement.setDate(5, new Date(observation.getTsReceived().getTime()));
+        statement.setInt(3, 1);     // FIXME: 2016.09.19. replace this const
+        statement.setDate(4, new Date(observation.getTsSpecified().getTime()));
+        statement.setDate(5, new Date(observation.getTsRecorded().getTime()));
+        statement.setDate(6, new Date(observation.getTsReceived().getTime()));
         if( observation.getTsUpdated() != null ) {
-            statement.setDate(6, new Date(observation.getTsUpdated().getTime()));
-        } else {
-            statement.setDate(6, null);
-        }
-        if( observation.getTsDeleted() != null ) {
-            statement.setDate(7, new Date(observation.getTsDeleted().getTime()));
+            statement.setDate(7, new Date(observation.getTsUpdated().getTime()));
         } else {
             statement.setDate(7, null);
         }
-        statement.setLong(8, observation.getSourceDevice().getPostgresId());
+        if( observation.getTsDeleted() != null ) {
+            statement.setDate(8, new Date(observation.getTsDeleted().getTime()));
+        } else {
+            statement.setDate(8, null);
+        }
+        statement.setLong(9, observation.getSourceDevice().getPostgresId());
         statement.execute();
 
         ResultSet generatedKeys = statement.getGeneratedKeys();
@@ -47,22 +47,125 @@ public class PostgresEpEventDAO {
             observation.setPostgresId( generatedKeys.getLong(1) );
         }
 
+        saveKnownEntity(observation);
+        return observation;
+    }
+
+    private void saveKnownEntity(Observation observation) throws SQLException {
         if( observation instanceof MissingFood ) {
             saveMissingFoodEntity((MissingFood) observation);
-        } else {
-            throw new RuntimeException("Unhandled observation type: " + observation.getType().getClassName());
+        } else if( observation instanceof PhysicalEvent) {
+            savePhysicalEvent((PhysicalEvent) observation);
+        } else if( observation instanceof BloodPressureMeas) {
+            saveBloodPressureEvent((BloodPressureMeas) observation);
+        } else if( observation instanceof GlucoseMeas) {
+            saveGlucoseMeas((GlucoseMeas) observation);
+        } else if( observation instanceof WeightMeas ) {
+            saveWeightMeas((WeightMeas) observation);
+        } else if( observation instanceof Medication ) {
+            saveMedicationEvent((Medication) observation);
         }
+    }
 
-        return observation;
+    private void saveMedicationEvent(Medication medication) throws SQLException {
+        PreparedStatement statement = PostgresConnection.getInstance().getConnection().prepareStatement(
+                "INSERT INTO " + getSchemaName() + ".event_medication(event_id, medication_id, quantity, unit_id, unit_label, " +
+                        "admin_route_code, admin_loc_code, related_meal_id, meal_relation_type_code, related_meal_type_code) VALUES " +
+                        "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);"
+        );
+        statement.setLong(1, medication.getPostgresId());
+        statement.setInt(2, medication.getMedicationId());
+        statement.setDouble(3, medication.getQuantity());
+        statement.setInt(4, medication.getUnitId());
+        statement.setString(5, medication.getUnitLabel());
+        if( medication.getAdminRouteCode() == null ) {
+            statement.setNull(6, Types.INTEGER);
+        } else {
+            statement.setInt(6, medication.getAdminRouteCode());
+        }
+        if( medication.getAdminLocCode() == null ) {
+            statement.setNull(7, Types.INTEGER);
+        } else {
+            statement.setInt(7, medication.getAdminLocCode());
+        }
+        statement.setNull(8, Types.INTEGER);
+        if( medication.getMealRelatedTypeCode() == null ) {
+            statement.setNull(9, Types.INTEGER);
+        } else {
+            statement.setInt(9, medication.getMealRelatedTypeCode());
+        }
+        if( medication.getRelatedMealTypeCode() == null ) {
+            statement.setNull(10, Types.INTEGER);
+        } else {
+            statement.setInt(10, medication.getRelatedMealTypeCode());
+        }
+        statement.execute();
+    }
+
+    private void saveWeightMeas(WeightMeas observation) throws SQLException {
+        PreparedStatement statement = PostgresConnection.getInstance().getConnection().prepareStatement(
+                "INSERT INTO " + getSchemaName() + ".event_weight_meas(event_id, weight_data) VALUES (?, ?);"
+        );
+        statement.setLong(1, observation.getPostgresId());
+        statement.setDouble(2, observation.getWeightData());
+        statement.execute();
+    }
+
+    private void saveGlucoseMeas(GlucoseMeas observation) throws SQLException {
+        PreparedStatement statement = PostgresConnection.getInstance().getConnection().prepareStatement(
+                "INSERT INTO " + getSchemaName() + ".event_glucose_meas(event_id, meas_time_code, glucose_data) " +
+                        "VALUES (?, ?, ?);"
+        );
+        statement.setLong(1, observation.getPostgresId());
+        statement.setNull(2, Types.INTEGER);
+        statement.setDouble(3, observation.getGlucoseData());
+        statement.execute();
+    }
+
+    private void saveBloodPressureEvent(BloodPressureMeas observation) throws SQLException {
+        PreparedStatement statement = PostgresConnection.getInstance().getConnection().prepareStatement(
+                "INSERT INTO " + getSchemaName() + ".event_bp_meas(event_id, systolic_data, diastolic_data, pulse_data) " +
+                        "VALUES (?, ?, ?, ?);"
+        );
+        statement.setLong(1, observation.getPostgresId());
+        statement.setInt(2, observation.getSystolicData());
+        statement.setInt(3, observation.getDiastolicData());
+        statement.setInt(4, observation.getPulseData());
+        statement.execute();
+    }
+
+    private void savePhysicalEvent(PhysicalEvent physicalEvent) throws SQLException {
+        PreparedStatement statement = PostgresConnection.getInstance().getConnection().prepareStatement(
+                "INSERT INTO " + getSchemaName() + ".event_physical(event_id, pa_id, pa_label, duration, energy_consumed) " +
+                        "VALUES (?, ?, ?, ?, ?);");
+        statement.setLong(1, physicalEvent.getPostgresId());
+        statement.setInt(2, physicalEvent.getPaId());
+        statement.setString(3, physicalEvent.getPaLabel());
+        if( physicalEvent.getDuration() == null ) {
+            statement.setNull(4, Types.DOUBLE);
+        } else {
+            statement.setInt(4, physicalEvent.getDuration());
+        }
+        statement.setInt(5, physicalEvent.getEnergyConsumed());
+        statement.execute();
     }
 
     private void saveMissingFoodEntity(MissingFood entity) throws SQLException {
         PreparedStatement statement = PostgresConnection.getInstance().getConnection().prepareStatement(
                 "INSERT INTO " + getSchemaName() + ".event_missing_food(event_id, food_id, recipe_id, message_text) " +
-                        "VALUES (?, ?, ?, ?);", Statement.RETURN_GENERATED_KEYS);
+                        "VALUES (?, ?, ?, ?);");
         statement.setLong(1, entity.getPostgresId());
-        statement.setInt(2, entity.getFoodId());
-        statement.setInt(3, entity.getRecipeId());
+        if( entity.getFoodId() == null ) {
+            statement.setNull(2, Types.INTEGER);
+        } else {
+            statement.setInt(2, entity.getFoodId());
+        }
+
+        if( entity.getRecipeId() == null ) {
+            statement.setNull(3, Types.INTEGER);
+        } else {
+            statement.setInt(3, entity.getRecipeId());
+        }
         statement.setString(4, entity.getMessageText());
         statement.execute();
     }
