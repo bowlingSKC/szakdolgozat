@@ -15,11 +15,12 @@ public class RootLayoutController {
     @FXML private Tab summaryTab;
     @FXML private Tab actionsTab;
     @FXML private Tab postgresTab;
-    @FXML private Tab mongoTab;
     @FXML private Tab settingsTab;
 
     @FXML
     public void initialize() {
+        actionsTab.setContent( getTabContent("main/migrationLayout.fxml") );
+        postgresTab.setContent( getTabContent("main/postgresQueryLayout.fxml") );
         settingsTab.setContent( getTabContent("settings/settings.fxml") );
     }
 

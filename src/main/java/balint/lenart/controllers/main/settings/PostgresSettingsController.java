@@ -1,7 +1,7 @@
 package balint.lenart.controllers.main.settings;
 
 import balint.lenart.Configuration;
-import balint.lenart.NotificationUtil;
+import balint.lenart.utils.NotificationUtil;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.TextField;

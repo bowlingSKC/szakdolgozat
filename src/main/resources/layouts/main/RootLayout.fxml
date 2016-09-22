@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import java.lang.*?>
+<?import javafx.scene.layout.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.BorderPane?>
+
 <BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="balint.lenart.controllers.main.RootLayoutController">
    <center>
       <TabPane prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
@@ -9,7 +12,6 @@
           <Tab fx:id="summaryTab" text="Összefoglaló" />
             <Tab fx:id="actionsTab" text="Műveletek" />
             <Tab fx:id="postgresTab" text="Postgres adatbázis" />
-            <Tab fx:id="mongoTab" text="Mongo adatbázis" />
           <Tab fx:id="settingsTab" text="Beállítások" />
         </tabs>
       </TabPane>

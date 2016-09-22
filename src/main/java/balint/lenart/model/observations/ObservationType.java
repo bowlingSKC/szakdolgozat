@@ -1,6 +1,8 @@
 package balint.lenart.model.observations;
 
-public enum ObservationType {
+import balint.lenart.model.helper.NamedEnum;
+
+public enum ObservationType implements NamedEnum {
 
     BLOOD_GLUCOSE_RECORD("Vércukorszint mérés", "hu.uni_pannon.mhealth.dsapi.datatype.BloodGlucoseRecord"),
     BLOOD_PRESSURE_RECORD("Vérnyomás mérés", "hu.uni_pannon.mhealth.dsapi.datatype.BloodPressureRecord"),

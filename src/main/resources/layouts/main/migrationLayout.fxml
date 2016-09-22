@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="balint.lenart.controllers.main.MigrationLayoutController">
+   <children>
+      <TextArea fx:id="migrationOutput" editable="false" layoutX="14.0" layoutY="255.0" prefHeight="131.0" prefWidth="572.0" AnchorPane.bottomAnchor="14.0" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="14.0" />
+      <TableView fx:id="migrationTable" layoutX="14.0" layoutY="41.0" prefHeight="201.0" prefWidth="572.0" AnchorPane.bottomAnchor="158.0" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="14.0" AnchorPane.topAnchor="41.0">
+        <columns>
+          <TableColumn fx:id="timeColumn" prefWidth="75.0" text="Idő" />
+            <TableColumn fx:id="entityColumn" prefWidth="75.0" text="Entitás" />
+          <TableColumn fx:id="successColumn" prefWidth="75.0" text="Sikeres?" />
+        </columns>
+         <columnResizePolicy>
+            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+         </columnResizePolicy>
+      </TableView>
+      <ProgressBar fx:id="migrationProgressBar" layoutX="14.0" layoutY="14.0" onMouseClicked="#handleStart" prefWidth="200.0" progress="0.0" AnchorPane.leftAnchor="14.0" AnchorPane.rightAnchor="14.0" />
+   </children>
+</AnchorPane>

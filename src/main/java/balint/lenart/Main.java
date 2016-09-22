@@ -15,9 +15,8 @@ public class Main extends Application {
 
     private Stage primaryStage;
 
-    public Main() throws SQLException {
+    public Main() {
         new Install().run();
-        new Migrator().restart();
     }
 
     @Override

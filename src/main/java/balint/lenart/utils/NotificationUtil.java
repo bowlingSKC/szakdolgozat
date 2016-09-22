@@ -1,4 +1,4 @@
-package balint.lenart;
+package balint.lenart.utils;
 
 import javafx.scene.control.Alert;
 

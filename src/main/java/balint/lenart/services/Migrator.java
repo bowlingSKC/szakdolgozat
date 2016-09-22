@@ -7,19 +7,27 @@ import balint.lenart.dao.postgres.*;
 import balint.lenart.model.Device;
 import balint.lenart.model.Episode;
 import balint.lenart.model.User;
+import balint.lenart.model.helper.MigrationElement;
 import balint.lenart.model.observations.Observation;
 import balint.lenart.model.observations.ObservationType;
+import balint.lenart.utils.DateUtils;
 import com.google.common.collect.Lists;
+import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import org.apache.log4j.Logger;
-import org.apache.log4j.spi.LoggerFactory;
+import org.apache.log4j.net.SyslogAppender;
 
 import java.sql.SQLException;
+import java.util.Date;
 import java.util.List;
+import java.util.Observable;
 
 public class Migrator extends Service<Boolean> {
 
+    private static Migrator instance;
     private static final Logger LOGGER = Logger.getLogger(Migrator.class);
 
     private final MongoDeviceDAO mongoDeviceDAO;
@@ -33,13 +41,17 @@ public class Migrator extends Service<Boolean> {
     private final PostgresMatchingTableDAO postgresMatchingTableDAO;
 
     private Long sumOfEntityInMongo;
+    private Long sumOfFailedEntityMigration = 0L;
+
+    private ObservableList<Throwable> migrateExceptions = FXCollections.observableArrayList();
+    private ObservableList<MigrationElement> migrationElements = FXCollections.observableArrayList();
 
     public static final List<ObservationType> PASSED_TYPES = Lists.newArrayList(
             ObservationType.NOTIFICATION_RECORD, ObservationType.WEIGHT_RECORD, ObservationType.BLOOD_GLUCOSE_RECORD,
             ObservationType.BLOOD_PRESSURE_RECORD, ObservationType.PA_LOG_RECORD, ObservationType.MEDICATION_RECORD
     );
 
-    public Migrator() {
+    private Migrator() {
         this.mongoDeviceDAO = new MongoDeviceDAO();
         this.mongoObservationDAO = new MongoObservationDAO();
         this.mongoUserDAO = new MongoUserDAO();
@@ -50,35 +62,49 @@ public class Migrator extends Service<Boolean> {
         this.postgresMatchingTableDAO = new PostgresMatchingTableDAO();
     }
 
-    @Override
-    protected Task<Boolean> createTask() {
-        return new MigrateTask();
+    public static Migrator getInstance() {
+        if( instance == null ) {
+            instance = new Migrator();
+        }
+        return instance;
     }
 
-    private class MigrateTask extends Task<Boolean> {
+    public ObservableList<Throwable> exceptionsProperty() {
+        return migrateExceptions;
+    }
+
+    @Override
+    protected Task<Boolean> createTask() {
+        return new MigratorTask();
+    }
+
+    public ObservableList<MigrationElement> migrationElementProperty() {
+        return migrationElements;
+    }
+
+    public class MigratorTask extends Task<Boolean> {
 
         @Override
         protected Boolean call() throws Exception {
-            return startProgress();
+            return startProcess();
         }
 
-        private boolean startProgress() {
+        private boolean startProcess() {
+            migrationElements.clear();
+
+            updateProgress(0L, 1L);
             sumOfEntityInMongo = calculateMigrationsProcess();
-            int failEntityMigration = 0;
 
             try {
                 PostgresConnection.getInstance().setAutoCommit(false);
                 List<User> users = mongoUserDAO.getAllUser();
                 for(User user : users) {
-                    try {
-                        User persisted = postgresUserDAO.saveEntity(user);
-                        migrateDevices(persisted);
-                        PostgresConnection.getInstance().commit();
-                    } catch (Exception ex) {
-                        // log all exception and continue with next use
-                        PostgresConnection.getInstance().rollback();
-                        ex.printStackTrace();
-                        failEntityMigration++;
+                    if( !isCancelled() ) {
+                        migrateUsers(user);
+                        LOGGER.info(user.getMongoId() + " id-vel rendelkező felhasználó adatai sikeresen migrálva lettek.");
+                    } else {
+                        updateMessage("A migrálási folyamatot megszakították.");
+                        LOGGER.info("A migrálási folyamatot megszakították.");
                     }
                 }
             } catch (Exception ex) {
@@ -92,13 +118,32 @@ public class Migrator extends Service<Boolean> {
                 }
             }
 
-            System.out.println("Fail entity migration: " + failEntityMigration);
-            if( failEntityMigration == 0 ) {
-                LOGGER.info("Migracio sikeresen vegrehajtva hiba nelkul!");
-            } else {
-                LOGGER.warn("A migracio soran hiba lepett fel ...");
+            return sumOfFailedEntityMigration.equals(0L);
+        }
+
+        @Override
+        protected void updateMessage(String message) {
+            super.updateMessage(DateUtils.formatMsecPrecision(new Date()) + " - " + message);
+        }
+
+        private void migrateUsers(User user) throws SQLException {
+            try {
+                User persisted = postgresUserDAO.saveEntity(user);
+                migrateDevices(persisted);
+                Platform.runLater(() -> updateProgress(getProgress() + 1 , sumOfEntityInMongo));
+                Platform.runLater(() ->
+                        updateMessage(user.getMongoId() + " id felhasznaló sikeresen migrálva lett."));
+                PostgresConnection.getInstance().commit();
+                migrationElements.add(new MigrationElement(new Date(), MigrationElement.EntityType.USER, true, null));
+            } catch (Exception ex) {
+                // log all exception and continue with next use - default use
+                PostgresConnection.getInstance().rollback();
+                ex.printStackTrace();
+                migrateExceptions.add(ex);
+                LOGGER.error("Hiba lépett fel " + user.getFullName() + " migrálása közben.", ex);
+                sumOfFailedEntityMigration++;
+                migrationElements.add(new MigrationElement(new Date(), MigrationElement.EntityType.USER, false, ex));
             }
-            return failEntityMigration == 0;
         }
 
         private Long calculateMigrationsProcess() {
@@ -115,6 +160,7 @@ public class Migrator extends Service<Boolean> {
                     Episode persistedEpisode = migrateEpisodes(owner, persistedDevice);
                     postgresMatchingTableDAO.insertToEpisodeDevice(persistedEpisode, persistedDevice);
                     migrateObservations(persistedEpisode, persistedDevice);
+                    migrationElements.add(new MigrationElement(new Date(), MigrationElement.EntityType.DEVICE, true, null));
                 }
             }
         }
@@ -130,6 +176,7 @@ public class Migrator extends Service<Boolean> {
 
             for(Observation observation : observations) {
                 postgresEpEventDAO.saveEntity(observation);
+                migrationElements.add(new MigrationElement(new Date(), observation.getType(), true, null));
             }
         }
     }
