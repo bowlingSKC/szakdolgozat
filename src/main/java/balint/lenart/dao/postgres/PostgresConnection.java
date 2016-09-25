@@ -2,10 +2,7 @@ package balint.lenart.dao.postgres;
 
 import balint.lenart.Configuration;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.*;
 
 public class PostgresConnection {
 
@@ -42,6 +39,14 @@ public class PostgresConnection {
 
     public void rollback() throws SQLException {
         connection.rollback();
+    }
+
+    public void rollback(Savepoint savepoint) throws SQLException {
+        connection.rollback(savepoint);
+    }
+
+    public Savepoint setSavepoint(String name) throws SQLException {
+        return connection.setSavepoint(name);
     }
 
     @Override

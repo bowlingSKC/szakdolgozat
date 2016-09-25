@@ -1,5 +1,6 @@
 package balint.lenart.controllers.main;
 
+import balint.lenart.Configuration;
 import balint.lenart.model.helper.MigrationElement;
 import balint.lenart.model.helper.NamedEnum;
 import balint.lenart.services.Migrator;
@@ -14,6 +15,7 @@ import javafx.concurrent.Worker;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.HBox;
 import javafx.util.Callback;
 
 import java.util.Date;
@@ -22,6 +24,11 @@ public class MigrationLayoutController {
 
     private static final Migrator migrator = Migrator.getInstance();
 
+    @FXML private HBox statBox;
+    @FXML private Label sumOfMigratedEntity;
+    @FXML private Label sumOfAllEntity;
+    @FXML private Button startButton;
+    @FXML private Button cancelButton;
     @FXML private ProgressBar migrationProgressBar;
     @FXML private TableView<MigrationElement> migrationTable;
     @FXML private TableColumn<MigrationElement, Date> timeColumn;
@@ -34,26 +41,24 @@ public class MigrationLayoutController {
         initTableView();
         setDefaultState();
 
-        migrator.stateProperty().addListener((observable, oldValue, newValue) -> {
-            if( !newValue.equals(Worker.State.READY) ) {
-                migrationProgressBar.progressProperty().unbind();
-                migrationTable.itemsProperty().unbind();
+        migrator.migrationMessageProperty().addListener((ListChangeListener<String>) c -> {
+            if( c.next() && c.getAddedSize() > 0 ) {
+                String newMessage = c.getAddedSubList().get(0);
+                migrationOutput.appendText(DateUtils.formatMsecPrecision(new Date()) + " - " + newMessage + "\n");
             }
         });
 
-        migrator.exceptionsProperty().addListener((ListChangeListener<Throwable>) c -> {
-            Platform.runLater(() -> {
-                if( c.next() ) {
-                    Throwable exception = c.getAddedSubList().get(0);
-                    migrationOutput.appendText(DateUtils.formatMsecPrecision(new Date()) + " - " + exception.getClass().getName() + "\n");
-                }
-            });
+        migrator.sumOfAllEntityProperty().addListener((observable, oldValue, newValue) -> {
+            Platform.runLater(() -> this.sumOfAllEntity.setText(String.valueOf(newValue)));
+        });
+
+        migrator.sumOfMigratedEntityProperty().addListener((observable, oldValue, newValue) -> {
+            Platform.runLater(() -> this.sumOfMigratedEntity.setText(String.valueOf(newValue)));
         });
 
         migrator.setOnSucceeded(event -> {
             NotificationUtil.showNotification(Alert.AlertType.INFORMATION, "Migrációs folyamat", "A migrációs folyamat siekresen véget ért!", "Az eltelt idő: " + " ms");
             this.migrationProgressBar.progressProperty().unbind();
-            this.migrationProgressBar.setProgress(0.0);
         });
 
         migrator.setOnFailed(event -> {
@@ -62,7 +67,18 @@ public class MigrationLayoutController {
         });
     }
 
+    @FXML
+    private void handleCancel() {
+        if( migrator.getState().equals(Worker.State.RUNNING) ) {
+            migrator.cancel();
+        }
+
+        changeRunningState(false);
+    }
+
     private void initTableView() {
+        migrationTable.setPlaceholder(new Label(Configuration.Constants.EMPTY_TABLE_MESSAGE));
+
         timeColumn.setCellValueFactory(new PropertyValueFactory<>("time"));
         timeColumn.setCellFactory(param -> new MigrationTableDateCell());
         entityColumn.setCellValueFactory(new PropertyValueFactory<>("entityType"));
@@ -72,17 +88,26 @@ public class MigrationLayoutController {
     }
 
     private void setDefaultState() {
-        migrationProgressBar.progressProperty().unbind();
         migrationProgressBar.setProgress(0D);
         migrationTable.getItems().clear();
         migrationOutput.clear();
+        changeRunningState(false);
+        migrator.reset();
+    }
+
+    private void changeRunningState(boolean startVisible) {
+        startButton.setDisable(startVisible);
+        cancelButton.setDisable(!startVisible);
+        statBox.setVisible(startVisible);
     }
 
     @FXML
     private void handleStart() {
+        changeRunningState(true);
+
         if( migrator.getState().equals(Worker.State.READY) ) {
             migrationProgressBar.progressProperty().bind( migrator.progressProperty() );
-           migrator.migrationElementProperty().addListener((ListChangeListener<MigrationElement>) c -> {
+            migrator.migrationElementProperty().addListener((ListChangeListener<MigrationElement>) c -> {
                Platform.runLater(() -> {
                    if( c.next() ) {
                        migrationTable.getItems().add( c.getAddedSubList().get(0) );
@@ -92,7 +117,7 @@ public class MigrationLayoutController {
             migrator.start();
         } else {
             NotificationUtil.showNotification(Alert.AlertType.ERROR, "Migráció",
-                    "A migrációs folyamat nem indítható el!", "A folyamat jelenleg is fut.");
+                    "A migrációs folyamat nem indítható el!", "A folyamat jelenleg is fut vagy még nem áll készen a futásra.");
         }
     }
 
@@ -132,7 +157,7 @@ public class MigrationLayoutController {
                 setText( item ? "Igen" : "Nem" );
                 if( !item ) {
                     setTooltip(new Tooltip( getExceptionMessage(getTableRow()) ));
-                    setStyle("-fx-background-color: red");
+                    setStyle("-fx-background-color: red; -fx-text-fill: white;");
                 }
             }
         }

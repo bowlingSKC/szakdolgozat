@@ -48,4 +48,25 @@ public class PostgresUserDAO {
         return user;
     }
 
+    public User getUserByMongoId(String mongoId) throws SQLException {
+        PreparedStatement statement = PostgresConnection.getInstance().getConnection().prepareStatement(
+                "SELECT user_id, user_type_code, firstname, family_name, email, ds_id, user_desc FROM " + getTableName() + " WHERE ds_id = ?"
+        );
+        statement.setString(1, mongoId);
+        ResultSet resultSet = statement.executeQuery();
+
+        if( resultSet.next() ) {
+            User user = new User();
+            user.setPostgresId( resultSet.getLong("user_id") );
+            user.setComment( resultSet.getString("user_desc") );
+            user.setFullName( resultSet.getString("firstname") + resultSet.getString("family_name") );
+            user.setEmail( resultSet.getString("email") );
+            user.setMongoId( resultSet.getString("ds_id") );
+
+            return user;
+        } else {
+            return null;
+        }
+    }
+
 }

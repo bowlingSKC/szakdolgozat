@@ -5,7 +5,6 @@ import org.apache.commons.io.FileUtils;
 
 import java.io.*;
 import java.net.URL;
-import java.util.Date;
 import java.util.Map;
 import java.util.Properties;
 
@@ -82,6 +81,11 @@ public class Configuration {
         URL defaultSettingsFileUrl = Configuration.class.getClassLoader().getResource("default-settings.properties");
         System.out.println(defaultSettingsFileUrl);
         FileUtils.copyURLToFile(defaultSettingsFileUrl, SETTINGS_FILE);
+    }
+
+    public interface Constants  {
+        String EMPTY_TABLE_MESSAGE = "Nincs megjeleníthető adat";
+
     }
 
     public static class MissingKeyException extends RuntimeException {

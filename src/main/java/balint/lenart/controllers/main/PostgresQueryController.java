@@ -1,8 +1,10 @@
 package balint.lenart.controllers.main;
 
+import balint.lenart.Configuration;
 import balint.lenart.dao.postgres.PostgresConnection;
 import balint.lenart.utils.DbUtil;
 import balint.lenart.utils.NotificationUtil;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
@@ -24,20 +26,27 @@ public class PostgresQueryController {
     @FXML private TableView resultTable;
 
     @FXML
+    private void initialize() {
+        resultTable.setPlaceholder(new Label(Configuration.Constants.EMPTY_TABLE_MESSAGE));
+    }
+
+    @FXML
     private void handleQuery() {
         resultTable.getColumns().clear();
         resultTable.getItems().clear();
 
-        try {
-            ResultSet resultSet = getResultByQuery();
-            showResult( resultSet );
-        } catch (SQLException ex) {
-            NotificationUtil.showNotification(Alert.AlertType.ERROR, "Hiba", "Szintaktikai hiba!",
-                    ex.getMessage());
-        } catch (Exception ex) {
-            NotificationUtil.showNotification(Alert.AlertType.ERROR, "Hiba", "Hiba történt a parancs futtatása közben!",
-                    ex.getMessage());
-        }
+        Platform.runLater(() -> {
+            try {
+                ResultSet resultSet = getResultByQuery();
+                showResult( resultSet );
+            } catch (SQLException ex) {
+                NotificationUtil.showNotification(Alert.AlertType.ERROR, "Hiba", "Szintaktikai hiba!",
+                        ex.getMessage());
+            } catch (Exception ex) {
+                NotificationUtil.showNotification(Alert.AlertType.ERROR, "Hiba", "Hiba történt a parancs futtatása közben!",
+                        ex.getMessage());
+            }
+        });
     }
 
     private ResultSet getResultByQuery() throws SQLException {

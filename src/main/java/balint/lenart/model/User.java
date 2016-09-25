@@ -2,14 +2,14 @@ package balint.lenart.model;
 
 public class User {
 
-    private final String mongoId;
+    private String mongoId;
     private Long postgresId;
-    private final boolean isActive;
-    private final String comment;
-    private final String email;
-    private final String fullName;
-    private final String password;
-    private final String type;
+    private boolean isActive;
+    private String comment;
+    private String email;
+    private String fullName;
+    private String password;
+    private String type;
 
     public User() {
         this(null, false, null, null, null, null, null);
@@ -59,5 +59,33 @@ public class User {
 
     public String getType() {
         return type;
+    }
+
+    public void setMongoId(String mongoId) {
+        this.mongoId = mongoId;
+    }
+
+    public void setActive(boolean active) {
+        isActive = active;
+    }
+
+    public void setComment(String comment) {
+        this.comment = comment;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 }
