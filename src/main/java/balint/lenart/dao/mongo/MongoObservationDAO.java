@@ -2,8 +2,6 @@ package balint.lenart.dao.mongo;
 
 import balint.lenart.model.Device;
 import balint.lenart.model.observations.Observation;
-import balint.lenart.model.observations.ObservationType;
-import balint.lenart.model.observations.helper.EventAnamnesisIllness;
 import balint.lenart.services.Migrator;
 import balint.lenart.utils.ObservationUtils;
 import com.google.common.collect.Lists;

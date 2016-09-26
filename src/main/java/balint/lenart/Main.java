@@ -1,7 +1,6 @@
 package balint.lenart;
 
 import balint.lenart.controllers.login.PasswordController;
-import balint.lenart.services.Migrator;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -9,7 +8,6 @@ import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 
 import java.io.IOException;
-import java.sql.SQLException;
 
 public class Main extends Application {
 
@@ -33,7 +31,7 @@ public class Main extends Application {
         controller.setLoginCallback(this::loginCallback);
 
         primaryStage.setResizable(false);
-        primaryStage.setTitle(Configuration.get("application.title"));
+        primaryStage.setTitle(Configuration.Constants.WINDOW_TITLE);
         primaryStage.show();
     }
 
@@ -43,6 +41,8 @@ public class Main extends Application {
             Pane layout = loader.load();
             Scene scene = new Scene(layout);
             this.primaryStage.setScene(scene);
+            this.primaryStage.setMinWidth(Configuration.Constants.WINDOW_MIN_WIDTH);
+            this.primaryStage.setMinHeight(Configuration.Constants.WINDOW_MIN_HEIGHT);
             this.primaryStage.centerOnScreen();
             this.primaryStage.setResizable(true);
         } catch (Exception ex) {

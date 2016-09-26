@@ -48,33 +48,28 @@ public class Configuration {
         SETTINGS_FILE.createNewFile();
 
         Properties properties = new Properties();
-        for(Map.Entry<String, String> entry : SETTINGS.entrySet()) {
+        SETTINGS.entrySet().stream().filter(entry -> entry.getValue() != null).forEach(entry -> {
             properties.setProperty(entry.getKey(), entry.getValue());
-        }
+        });
 
         OutputStream os = new FileOutputStream(SETTINGS_FILE);
         properties.store(os, null);
     }
 
-    public static String get(String key) throws MissingKeyException {
-        if(!SETTINGS.containsKey(key)) {
-            throw new MissingKeyException("A megadott kulcs nincs regisztrálva!");
-        }
+    public static String get(String key) {
         return SETTINGS.get(key);
     }
 
-    public static void set(String key, String value) throws MissingKeyException {
-        if(!SETTINGS.containsKey(key)) {
-            throw new MissingKeyException("A megadott kulcs nincs regisztrálva!");
-        }
+    public static void set(String key, String value) {
         SETTINGS.put(key, value);
     }
 
     public static void add(String key, String value) {
-        if(SETTINGS.containsKey(key)) {
-            throw new AlreadyExistsKeyException("A megadott kulcs már regisztrálva lett!");
-        }
         SETTINGS.put(key, value);
+    }
+
+    public static MigrationSettingsLevel getMigrationLevel() {
+        return MigrationSettingsLevel.valueOf(get("migration.tranlevel"));
     }
 
     private static void createDefaultConfiguration() throws IOException {
@@ -84,19 +79,9 @@ public class Configuration {
     }
 
     public interface Constants  {
+        String WINDOW_TITLE = "Lavinia adatbázis migráló";
         String EMPTY_TABLE_MESSAGE = "Nincs megjeleníthető adat";
-
-    }
-
-    public static class MissingKeyException extends RuntimeException {
-        public MissingKeyException(String msg) {
-            super(msg);
-        }
-    }
-
-    public static class AlreadyExistsKeyException extends RuntimeException {
-        public AlreadyExistsKeyException(String msg) {
-            super(msg);
-        }
+        double WINDOW_MIN_WIDTH = 650;
+        double WINDOW_MIN_HEIGHT = 450;
     }
 }

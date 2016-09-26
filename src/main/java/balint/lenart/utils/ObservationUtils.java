@@ -58,10 +58,12 @@ public class ObservationUtils {
         event.setQuantity( document.get("content", Document.class).getDouble("quantity") );
         event.setUnitId( document.get("content", Document.class).getInteger("unitId") );
         event.setUnitLabel( document.get("content", Document.class).getString("unitLabel") );
-        event.setAdminRouteCode( CodeUtils.getMedicationAdminRouteCode(document.get("context", Document.class).getString("routeOfAdministration")) );
-        event.setAdminLocCode( document.get("context", Document.class).getInteger("placeOfAdministration") );
-        event.setMealRelatedTypeCode(CodeUtils.getMedicationTimeOfAdministration(document.get("context", Document.class).getInteger("timeOfAdministration")));
-        event.setRelatedMealTypeCode( document.get("context", Document.class).getInteger("relatedTo") );
+        if( document.containsKey("context") ) {
+            event.setAdminRouteCode( CodeUtils.getMedicationAdminRouteCode(document.get("context", Document.class).getString("routeOfAdministration")) );
+            event.setAdminLocCode( document.get("context", Document.class).getInteger("placeOfAdministration") );
+            event.setMealRelatedTypeCode(CodeUtils.getMedicationTimeOfAdministration(document.get("context", Document.class).getInteger("timeOfAdministration")));
+            event.setRelatedMealTypeCode( document.get("context", Document.class).getInteger("relatedTo") );
+        } // TODO: 2016.09.26. can be contextType
         return event;
     }
 

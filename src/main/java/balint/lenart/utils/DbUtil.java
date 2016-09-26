@@ -1,5 +1,9 @@
 package balint.lenart.utils;
 
+import balint.lenart.model.helper.PostgresConnectionProperties;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,15 +35,18 @@ public class DbUtil {
         }
     };
 
-    public static String getQuotedString(String str) {
-        if( str == null ) {
-            return null;
-        }
-        return "'" + str + "'";
-    }
-
     public static String getJdbcTypeName(Integer jdbcType) {
         return SQL_TYPES.get(jdbcType);
     }
 
+    public static boolean testPostgresConnection(PostgresConnectionProperties properties) {
+        try {
+            Connection connection =
+                    DriverManager.getConnection(properties.getJDBCConnectionUrl(), properties.getUserName(), properties.getPassword());
+            connection.close();
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
 }

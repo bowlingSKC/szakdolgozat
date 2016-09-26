@@ -109,8 +109,9 @@ public class MigrationLayoutController {
             migrationProgressBar.progressProperty().bind( migrator.progressProperty() );
             migrator.migrationElementProperty().addListener((ListChangeListener<MigrationElement>) c -> {
                Platform.runLater(() -> {
-                   if( c.next() ) {
-                       migrationTable.getItems().add( c.getAddedSubList().get(0) );
+                   if( c.next() && c.getAddedSize() != 0 ) {
+                       MigrationElement newElement = c.getAddedSubList().get(0);
+                       migrationTable.getItems().add( newElement );
                    }
                });
            });

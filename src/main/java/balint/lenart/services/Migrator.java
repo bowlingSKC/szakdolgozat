@@ -1,6 +1,7 @@
 package balint.lenart.services;
 
 import balint.lenart.Configuration;
+import balint.lenart.MigrationSettingsLevel;
 import balint.lenart.dao.mongo.MongoDeviceDAO;
 import balint.lenart.dao.mongo.MongoObservationDAO;
 import balint.lenart.dao.mongo.MongoUserDAO;
@@ -10,35 +11,28 @@ import balint.lenart.model.Episode;
 import balint.lenart.model.User;
 import balint.lenart.model.helper.MigrationElement;
 import balint.lenart.model.helper.NamedEnum;
+import balint.lenart.model.observations.MissingFood;
 import balint.lenart.model.observations.Observation;
 import balint.lenart.model.observations.ObservationType;
-import balint.lenart.utils.DateUtils;
-import balint.lenart.utils.NotificationUtil;
 import com.google.common.collect.Lists;
-import com.sun.deploy.config.Config;
 import javafx.application.Platform;
 import javafx.beans.property.LongProperty;
 import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.value.ObservableLongValue;
-import javafx.beans.value.ObservableObjectValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
-import javafx.scene.control.ButtonType;
 import org.apache.commons.lang3.BooleanUtils;
-import org.apache.log4j.Logger;
 
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
 
 public class Migrator extends Service<Boolean> {
 
     private static Migrator instance;
-    private static final Logger LOGGER = Logger.getLogger(Migrator.class);
 
     // Mongo database DAOs
     private final MongoDeviceDAO mongoDeviceDAO;
@@ -70,6 +64,8 @@ public class Migrator extends Service<Boolean> {
 
     // Savepoints
     private Savepoint beginSP = null;
+    private Savepoint lastDeviceSP = null;
+    private Savepoint lastObservationSP = null;
 
     private Migrator() {
         this.mongoDeviceDAO = new MongoDeviceDAO();
@@ -158,10 +154,8 @@ public class Migrator extends Service<Boolean> {
                 for(User user : users) {
                     if( !isCancelled() ) {
                         migrateUsers(user);
-                        LOGGER.info(user.getMongoId() + " id-vel rendelkező felhasználó adatai sikeresen migrálva lettek.");
                     } else {
                         migrationMessageProperty.add("A migrálási folyamatot megszakították.");
-                        LOGGER.info("A migrálási folyamatot megszakították.");
                         break;
                     }
                 }
@@ -198,6 +192,7 @@ public class Migrator extends Service<Boolean> {
                 addNewMigrationElement(MigrationElement.EntityType.USER, false, ex);
             } catch (Exception ex) {
                 PostgresConnection.getInstance().rollback();
+
                 sumOfFailedEntityMigration++;
             }
         }
@@ -210,18 +205,23 @@ public class Migrator extends Service<Boolean> {
             List<Device> devices = mongoDeviceDAO.getDeviceByUser(owner);
             for(Device device : devices) {
                 try {
+                    lastDeviceSP = PostgresConnection.getInstance().setSavepoint();
                     Device persistedDevice = postgresDeviceDAO.saveEntity(device);
                     Episode persistedEpisode = migrateEpisodes(owner, persistedDevice);
                     postgresMatchingTableDAO.insertToEpisodeDevice(persistedEpisode, persistedDevice);
+
                     migrateObservations(persistedEpisode, persistedDevice);
 
-                    PostgresConnection.getInstance().commit();
                     addNewMigrationElement(MigrationElement.EntityType.DEVICE, true, null);
                     sumOfMigratedEntity.setValue( sumOfMigratedEntity.get() + 1 );
                 } catch (Exception ex) {
                     addNewMigrationMessage( ex.getClass().getName() );
                     addNewMigrationElement(MigrationElement.EntityType.DEVICE, false, ex);
-                    throw new Exception(ex);
+                    if( Configuration.getMigrationLevel().equals(MigrationSettingsLevel.DEVICE) ) {
+                        PostgresConnection.getInstance().rollback(lastDeviceSP);
+                    } else {
+                        throw ex;
+                    }
                 }
             }
 
@@ -239,13 +239,19 @@ public class Migrator extends Service<Boolean> {
 
             for(Observation observation : observations) {
                 try {
+                    lastObservationSP = PostgresConnection.getInstance().setSavepoint();
                     postgresEpEventDAO.saveEntity(observation);
+
                     addNewMigrationElement(observation.getType(), true, null);
                     sumOfMigratedEntity.setValue( sumOfMigratedEntity.get() + 1 );
                 } catch (Exception ex) {
-                    addNewMigrationElement(observation.getType(), true, null);
+                    addNewMigrationElement(observation.getType(), false, ex);
                     addNewMigrationMessage( ex.getClass().getName() );
-                    throw new Exception(ex);
+                    if( Configuration.getMigrationLevel().equals(MigrationSettingsLevel.OBSERVATION) ) {
+                        PostgresConnection.getInstance().rollback(lastObservationSP);
+                    } else {
+                        throw ex;
+                    }
                 }
             }
         }

@@ -49,6 +49,10 @@ public class PostgresConnection {
         return connection.setSavepoint(name);
     }
 
+    public Savepoint setSavepoint() throws SQLException {
+        return connection.setSavepoint();
+    }
+
     @Override
     protected void finalize() throws Throwable {
         super.finalize();
