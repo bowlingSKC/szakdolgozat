@@ -6,11 +6,13 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
+import org.apache.log4j.Logger;
 
 import java.io.IOException;
 
 public class Main extends Application {
 
+    private static final Logger LOGGER = Logger.getLogger(Main.class);
     private Stage primaryStage;
 
     public Main() {
@@ -46,6 +48,7 @@ public class Main extends Application {
             this.primaryStage.centerOnScreen();
             this.primaryStage.setResizable(true);
         } catch (Exception ex) {
+            LOGGER.error("A felhasználói felület betöltése sikertelen", ex);
             ex.printStackTrace();
         }
     }

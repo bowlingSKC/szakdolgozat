@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class PostgresConnectionProperties {
+public class DatabaseConnectionProperties {
 
     private String host;
     private int port = 5432;    // Default port

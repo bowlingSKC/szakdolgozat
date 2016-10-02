@@ -24,7 +24,6 @@
                     <columnConstraints>
                       <ColumnConstraints hgrow="SOMETIMES" maxWidth="202.0" minWidth="10.0" prefWidth="191.0" />
                       <ColumnConstraints hgrow="SOMETIMES" maxWidth="161.0" minWidth="10.0" prefWidth="161.0" />
-                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="95.0" minWidth="10.0" prefWidth="27.0" />
                     </columnConstraints>
                     <rowConstraints>
                       <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
@@ -37,30 +36,10 @@
                         <Label text="Kivételek logolása migrálás közben" GridPane.rowIndex="1" />
                         <Label text="Entitások logolása migrálás közben" GridPane.rowIndex="2" />
                         <Label text="Migrálás tranzakció szintje" GridPane.rowIndex="3" />
-                        <CheckBox mnemonicParsing="false" GridPane.columnIndex="1" />
-                        <CheckBox mnemonicParsing="false" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                        <CheckBox mnemonicParsing="false" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                        <CheckBox fx:id="dumpBeforeMigrationCheckBox" mnemonicParsing="false" GridPane.columnIndex="1" />
+                        <CheckBox fx:id="migrationLogExceptionCheckBox" mnemonicParsing="false" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                        <CheckBox fx:id="migrationLogEntityCheckBox" mnemonicParsing="false" GridPane.columnIndex="1" GridPane.rowIndex="2" />
                         <ComboBox fx:id="levelSelector" prefWidth="150.0" GridPane.columnIndex="1" GridPane.rowIndex="3" />
-                        <ImageView fitHeight="16.0" fitWidth="16.0" pickOnBounds="true" preserveRatio="true" GridPane.columnIndex="2">
-                           <image>
-                              <Image url="@../../imgs/question.png" />
-                           </image>
-                        </ImageView>
-                        <ImageView fitHeight="16.0" fitWidth="16.0" pickOnBounds="true" preserveRatio="true" GridPane.columnIndex="2" GridPane.rowIndex="1">
-                           <image>
-                              <Image url="@../../imgs/question.png" />
-                           </image>
-                        </ImageView>
-                        <ImageView fitHeight="16.0" fitWidth="16.0" pickOnBounds="true" preserveRatio="true" GridPane.columnIndex="2" GridPane.rowIndex="2">
-                           <image>
-                              <Image url="@../../imgs/question.png" />
-                           </image>
-                        </ImageView>
-                        <ImageView fitHeight="16.0" fitWidth="16.0" pickOnBounds="true" preserveRatio="true" GridPane.columnIndex="2" GridPane.rowIndex="3">
-                           <image>
-                              <Image url="@../../imgs/question.png" />
-                           </image>
-                        </ImageView>
                      </children>
                   </GridPane>
                   <Pane HBox.hgrow="ALWAYS" />
@@ -69,6 +48,6 @@
             <Pane VBox.vgrow="ALWAYS" />
          </children>
       </VBox>
-      <Button defaultButton="true" mnemonicParsing="false" prefWidth="73.0" text="Mentés" AnchorPane.bottomAnchor="14.0" AnchorPane.rightAnchor="14.0" />
+      <Button defaultButton="true" mnemonicParsing="false" onAction="#handleSave" prefWidth="73.0" text="Mentés" AnchorPane.bottomAnchor="14.0" AnchorPane.rightAnchor="14.0" />
    </children>
 </AnchorPane>

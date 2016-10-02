@@ -1,6 +1,12 @@
 package balint.lenart.utils;
 
-import balint.lenart.model.helper.PostgresConnectionProperties;
+import balint.lenart.model.helper.DatabaseConnectionProperties;
+import com.google.common.collect.Lists;
+import com.mongodb.MongoClient;
+import com.mongodb.MongoClientOptions;
+import com.mongodb.MongoCredential;
+import com.mongodb.ServerAddress;
+import org.apache.commons.lang3.StringUtils;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -39,11 +45,56 @@ public class DbUtil {
         return SQL_TYPES.get(jdbcType);
     }
 
-    public static boolean testPostgresConnection(PostgresConnectionProperties properties) {
+    public static boolean testPostgresConnection(DatabaseConnectionProperties properties) {
         try {
             Connection connection =
                     DriverManager.getConnection(properties.getJDBCConnectionUrl(), properties.getUserName(), properties.getPassword());
             connection.close();
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    // FIXME: 2016.09.27. very slow operation
+    public static boolean testMongoConnection(DatabaseConnectionProperties properties) {
+        if(StringUtils.isNotEmpty(properties.getPassword())) {
+            return testMongoAuthenticationConnection(properties);
+        } else {
+            return testMongoWithoutAuthenticationConnection(properties);
+        }
+    }
+
+    private static boolean testMongoWithoutAuthenticationConnection(DatabaseConnectionProperties properties) {
+        try {
+            MongoClientOptions.Builder builder = MongoClientOptions.builder().connectTimeout(1000);
+            MongoClient client = new MongoClient(
+                    new ServerAddress(properties.getHost(), properties.getPort()),
+                    builder.build());
+            client.getAddress();
+            client.close();
+
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    private static boolean testMongoAuthenticationConnection(DatabaseConnectionProperties properties) {
+        try {
+            MongoCredential credential = MongoCredential.createCredential(
+                    properties.getUserName(),
+                    properties.getDbName(),
+                    properties.getPassword().toCharArray()
+            );
+            ServerAddress serverAddress = new ServerAddress(
+                    properties.getHost(),
+                    properties.getPort()
+            );
+            MongoClient client = new MongoClient(serverAddress, Lists.newArrayList(credential));
+            client.getAddress();    // it is throw exception if connection is not successful
+
+            client.close();
             return true;
         } catch (Exception ex) {
             return false;

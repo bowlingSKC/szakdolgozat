@@ -7,6 +7,7 @@ import java.io.*;
 import java.net.URL;
 import java.util.Map;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 public class Configuration {
 
@@ -76,6 +77,11 @@ public class Configuration {
         URL defaultSettingsFileUrl = Configuration.class.getClassLoader().getResource("default-settings.properties");
         System.out.println(defaultSettingsFileUrl);
         FileUtils.copyURLToFile(defaultSettingsFileUrl, SETTINGS_FILE);
+
+    }
+
+    public static void setMigrationLevel(MigrationSettingsLevel migrationLevel) {
+        SETTINGS.put("migration.tranlevel", migrationLevel.name());
     }
 
     public interface Constants  {

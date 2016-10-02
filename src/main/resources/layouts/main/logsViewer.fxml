@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="balint.lenart.controllers.main.LogViewerController">
+   <children>
+      <ComboBox fx:id="typeSelector" layoutX="14.0" layoutY="14.0" prefWidth="150.0" AnchorPane.leftAnchor="14.0" AnchorPane.topAnchor="14.0" />
+      <ListView fx:id="logListView" layoutX="14.0" layoutY="48.0" prefHeight="336.0" prefWidth="150.0" AnchorPane.bottomAnchor="14.0" AnchorPane.leftAnchor="14.0" AnchorPane.topAnchor="50.0" />
+      <TextArea fx:id="messageArea" editable="false" layoutX="171.0" layoutY="14.0" AnchorPane.bottomAnchor="14.0" AnchorPane.leftAnchor="170.0" AnchorPane.rightAnchor="14.0" AnchorPane.topAnchor="14.0" />
+   </children>
+</AnchorPane>

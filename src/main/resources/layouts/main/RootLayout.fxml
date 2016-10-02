@@ -13,6 +13,7 @@
             <Tab fx:id="actionsTab" text="Műveletek" />
             <Tab fx:id="postgresTab" text="Postgres adatbázis" />
           <Tab fx:id="settingsTab" text="Beállítások" />
+            <Tab fx:id="logTab" text="Logok" />
         </tabs>
       </TabPane>
    </center>

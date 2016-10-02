@@ -19,12 +19,14 @@ public class RootLayoutController {
     @FXML private Tab actionsTab;
     @FXML private Tab postgresTab;
     @FXML private Tab settingsTab;
+    @FXML private Tab logTab;
 
     @FXML
     public void initialize() {
         actionsTab.setContent( getTabContent("main/migrationLayout.fxml") );
         postgresTab.setContent( getTabContent("main/postgresQueryLayout.fxml") );
         settingsTab.setContent( getTabContent("settings/settings.fxml") );
+        logTab.setContent( getTabContent("main/logsViewer.fxml") );
     }
 
     private Node getTabContent(String fxmlFileName) {
@@ -32,6 +34,7 @@ public class RootLayoutController {
         try {
             return loader.load();
         } catch (IOException ex) {
+            System.out.println(ex);
             return new VBox(new Label("A panel betöltése nem sikerült ..."),
                     new Label(ExceptionUtils.getStackTrace(ex)));
         }

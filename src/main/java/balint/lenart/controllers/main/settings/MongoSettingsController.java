@@ -1,6 +1,9 @@
 package balint.lenart.controllers.main.settings;
 
 import balint.lenart.Configuration;
+import balint.lenart.controllers.RefreshTabController;
+import balint.lenart.model.helper.DatabaseConnectionProperties;
+import balint.lenart.utils.DbUtil;
 import balint.lenart.utils.NotificationUtil;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
@@ -10,7 +13,7 @@ import javafx.scene.control.TextField;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 
-public class MongoSettingsController {
+public class MongoSettingsController implements RefreshTabController {
 
     @FXML private TextField hostField;
     @FXML private TextField portField;
@@ -22,7 +25,7 @@ public class MongoSettingsController {
     @FXML
     private void initialize() {
         bindUsePasswordField();
-        fillFieldFromSettings();
+        refreshTab();
     }
 
     private void bindUsePasswordField() {
@@ -35,15 +38,6 @@ public class MongoSettingsController {
                 passwordField.setText(null);
             }
         });
-    }
-
-    private void fillFieldFromSettings() {
-        hostField.setText(Configuration.get("mongo.connection.host"));
-        portField.setText(Configuration.get("mongo.connection.port"));
-        databaseField.setText(Configuration.get("mongo.connection.database"));
-        usePasswordField.setSelected(BooleanUtils.toBoolean(Configuration.get("mongo.connection.usepassword")));
-        usernameField.setText(Configuration.get("mongo.connection.username"));
-        passwordField.setText(Configuration.get("mongo.connection.password"));
     }
 
     @FXML
@@ -105,7 +99,39 @@ public class MongoSettingsController {
 
     @FXML
     private void handleTestConnection() {
+        try {
+            checkFields();
+            if(DbUtil.testMongoConnection(createPropertiesFromFields())) {
+                NotificationUtil.showNotification(Alert.AlertType.INFORMATION, "Kapcsolódás adatbázishoz",
+                        "A teszt sikerült!", "Sikeresen lehetett kapcsolódni a megadott adatbázishoz.");
+            } else {
+                NotificationUtil.showNotification(Alert.AlertType.ERROR, "Kapcsolódás adatábizshoz",
+                        "A teszt sikertelen!", "A megadott adatokkal nem lehet kapcsolódni egy adatbázishoz sem.");
+            }
 
+        } catch (Exception ex) {
+            NotificationUtil.showNotification(Alert.AlertType.ERROR, "Hiba", "A következő hibák léptek fel tesztelés közben:",
+                    ex.getMessage());
+        }
     }
 
+    private DatabaseConnectionProperties createPropertiesFromFields() {
+        DatabaseConnectionProperties properties = new DatabaseConnectionProperties();
+        properties.setDbName( databaseField.getText() );
+        properties.setHost( hostField.getText() );
+        properties.setPassword( passwordField.getText() );
+        properties.setPort( Integer.valueOf(portField.getText()) );
+        properties.setUserName( usernameField.getText() );
+        return properties;
+    }
+
+    @Override
+    public void refreshTab() {
+        hostField.setText(Configuration.get("mongo.connection.host"));
+        portField.setText(Configuration.get("mongo.connection.port"));
+        databaseField.setText(Configuration.get("mongo.connection.database"));
+        usePasswordField.setSelected(BooleanUtils.toBoolean(Configuration.get("mongo.connection.usepassword")));
+        usernameField.setText(Configuration.get("mongo.connection.username"));
+        passwordField.setText(Configuration.get("mongo.connection.password"));
+    }
 }

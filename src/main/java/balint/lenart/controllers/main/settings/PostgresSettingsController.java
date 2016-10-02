@@ -1,7 +1,8 @@
 package balint.lenart.controllers.main.settings;
 
 import balint.lenart.Configuration;
-import balint.lenart.model.helper.PostgresConnectionProperties;
+import balint.lenart.controllers.RefreshTabController;
+import balint.lenart.model.helper.DatabaseConnectionProperties;
 import balint.lenart.utils.DbUtil;
 import balint.lenart.utils.NotificationUtil;
 import javafx.fxml.FXML;
@@ -10,7 +11,7 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import org.apache.commons.lang3.StringUtils;
 
-public class PostgresSettingsController {
+public class PostgresSettingsController implements RefreshTabController {
 
     @FXML private TextField hostField;
     @FXML private TextField portField;
@@ -21,12 +22,7 @@ public class PostgresSettingsController {
 
     @FXML
     private void initialize() {
-        hostField.setText(Configuration.get("postgres.connection.host"));
-        portField.setText(Configuration.get("postgres.connection.port"));
-        databaseField.setText(Configuration.get("postgres.connection.database"));
-        schemeField.setText(Configuration.get("postgres.connection.schema"));
-        userField.setText(Configuration.get("postgres.connection.username"));
-        passwordField.setText(Configuration.get("postgres.connection.password"));
+        refreshTab();
     }
 
     @FXML
@@ -60,8 +56,8 @@ public class PostgresSettingsController {
         }
     }
 
-    private PostgresConnectionProperties createPropertiesFromFields() {
-        PostgresConnectionProperties properties = new PostgresConnectionProperties();
+    private DatabaseConnectionProperties createPropertiesFromFields() {
+        DatabaseConnectionProperties properties = new DatabaseConnectionProperties();
         properties.setDbName( databaseField.getText().trim() );
         properties.setHost( hostField.getText().trim() );
         properties.setPassword( passwordField.getText() );
@@ -107,4 +103,13 @@ public class PostgresSettingsController {
         Configuration.set("postgres.connection.password", passwordField.getText());
     }
 
+    @Override
+    public void refreshTab() {
+        hostField.setText(Configuration.get("postgres.connection.host"));
+        portField.setText(Configuration.get("postgres.connection.port"));
+        databaseField.setText(Configuration.get("postgres.connection.database"));
+        schemeField.setText(Configuration.get("postgres.connection.schema"));
+        userField.setText(Configuration.get("postgres.connection.username"));
+        passwordField.setText(Configuration.get("postgres.connection.password"));
+    }
 }

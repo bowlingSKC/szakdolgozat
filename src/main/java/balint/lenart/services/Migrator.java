@@ -11,11 +11,9 @@ import balint.lenart.model.Episode;
 import balint.lenart.model.User;
 import balint.lenart.model.helper.MigrationElement;
 import balint.lenart.model.helper.NamedEnum;
-import balint.lenart.model.observations.MissingFood;
 import balint.lenart.model.observations.Observation;
 import balint.lenart.model.observations.ObservationType;
 import com.google.common.collect.Lists;
-import javafx.application.Platform;
 import javafx.beans.property.LongProperty;
 import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.value.ObservableLongValue;
@@ -24,6 +22,7 @@ import javafx.collections.ObservableList;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.log4j.Logger;
 
 import java.sql.SQLException;
 import java.sql.Savepoint;
@@ -33,6 +32,7 @@ import java.util.List;
 public class Migrator extends Service<Boolean> {
 
     private static Migrator instance;
+    private static final Logger LOGGER = Logger.getLogger("MigrationLogger");
 
     // Mongo database DAOs
     private final MongoDeviceDAO mongoDeviceDAO;
@@ -63,7 +63,6 @@ public class Migrator extends Service<Boolean> {
     );
 
     // Savepoints
-    private Savepoint beginSP = null;
     private Savepoint lastDeviceSP = null;
     private Savepoint lastObservationSP = null;
 
@@ -81,6 +80,7 @@ public class Migrator extends Service<Boolean> {
     public static Migrator getInstance() {
         if( instance == null ) {
             instance = new Migrator();
+            LOGGER.trace("A migrátori folyamat sikeresen inicializálódott");
         }
         return instance;
     }
@@ -140,15 +140,18 @@ public class Migrator extends Service<Boolean> {
             migrationElements.clear();
             migrationMessageProperty.clear();
 
+            LOGGER.info("A migrálási folyamat elkezdődött");
+            LOGGER.info("A migrációs folyamat tranzakciós szintje: " + Configuration.getMigrationLevel().getName());
             migrationMessageProperty.add("A migrálási folyamat elkezdődött");
-            updateProgress(0L, 1L);
             sumOfEntityInMongo = calculateMigrationsProcess();
+            updateProgress(0L, sumOfEntityInMongo);
             migrationMessageProperty.add("MongoDB-ben talált dokumentumok száma: " + sumOfEntityInMongo);
             sumOfAllEntity.setValue( sumOfEntityInMongo );
+            LOGGER.info("MongoDB-ben talált dokumentumok száma: " + sumOfEntityInMongo);
 
             try {
                 PostgresConnection.getInstance().setAutoCommit(false);
-                beginSP = PostgresConnection.getInstance().setSavepoint("BEGIN_ALL_TRANSACTION");
+                LOGGER.trace("JDBC tranzakació szintje: manuális");
 
                 List<User> users = mongoUserDAO.getAllUser();
                 for(User user : users) {
@@ -156,18 +159,22 @@ public class Migrator extends Service<Boolean> {
                         migrateUsers(user);
                     } else {
                         migrationMessageProperty.add("A migrálási folyamatot megszakították.");
+                        LOGGER.info("A migrálási folyamatot megszakították.");
                         break;
                     }
                 }
             } catch (Exception ex) {
                 // connection or setAutoCommit failure
                 migrationMessageProperty.add("Nem sikerült beállítani a JDBC tranzakció kezelését");
+                LOGGER.error("Nem sikerült beállítani a JDBC tranzakció kezelését");
                 ex.printStackTrace();
             } finally {
                 try {
                     PostgresConnection.getInstance().setAutoCommit(true);
+                    LOGGER.trace("JDBC tranzakació szintje: auto");
                 } catch (SQLException e) {
                     // ignore this exception
+                    LOGGER.warn("Nem sikerült a JDBC tranzakció szintjét visszaállítani");
                 }
             }
 
@@ -180,19 +187,22 @@ public class Migrator extends Service<Boolean> {
                 migrateDevices(persisted);
                 PostgresConnection.getInstance().commit();
 
-                Platform.runLater(() -> updateProgress(getProgress() + 1 , sumOfEntityInMongo));
+                updateProgress(getProgress() + 1 , sumOfEntityInMongo);
                 addNewMigrationElement(MigrationElement.EntityType.USER, true, null);
                 sumOfMigratedEntity.setValue( sumOfMigratedEntity.get() + 1 );
+                LOGGER.trace("Felhasználó sikeresen migrálva, MongoID: " + user.getMongoId() + ", PostgresID: " + user.getPostgresId());
             } catch (SQLException ex) {
                 PostgresConnection.getInstance().rollback();
                 ex.printStackTrace();
                 sumOfFailedEntityMigration++;
 
+                LOGGER.warn("Hiba történt egy felhasználó migrálásakkor! MongoID: " + user.getMongoId(), ex);
                 addNewMigrationMessage( ex.getClass().getName() );
                 addNewMigrationElement(MigrationElement.EntityType.USER, false, ex);
             } catch (Exception ex) {
                 PostgresConnection.getInstance().rollback();
 
+                LOGGER.warn("Hiba történt egy felhasználó migrálásakkor! MongoID: " + user.getMongoId(), ex);
                 sumOfFailedEntityMigration++;
             }
         }
@@ -212,11 +222,14 @@ public class Migrator extends Service<Boolean> {
 
                     migrateObservations(persistedEpisode, persistedDevice);
 
+                    LOGGER.trace("Eszköz sikeresen migrálva, MongoID: " + device.getMongoId() + ", PostgresID: " + device.getPostgresId());
                     addNewMigrationElement(MigrationElement.EntityType.DEVICE, true, null);
                     sumOfMigratedEntity.setValue( sumOfMigratedEntity.get() + 1 );
+
                 } catch (Exception ex) {
                     addNewMigrationMessage( ex.getClass().getName() );
                     addNewMigrationElement(MigrationElement.EntityType.DEVICE, false, ex);
+                    LOGGER.warn("Hiba történt egy eszköz migrálásakkor! MongoID: " + device.getMongoId(), ex);
                     if( Configuration.getMigrationLevel().equals(MigrationSettingsLevel.DEVICE) ) {
                         PostgresConnection.getInstance().rollback(lastDeviceSP);
                     } else {
@@ -241,10 +254,13 @@ public class Migrator extends Service<Boolean> {
                 try {
                     lastObservationSP = PostgresConnection.getInstance().setSavepoint();
                     postgresEpEventDAO.saveEntity(observation);
+                    updateProgress(getProgress() + 1, sumOfEntityInMongo);
 
+                    LOGGER.trace("Megfigyelés sikeresen migrálva, PostgresID: " + observation.getPostgresId());
                     addNewMigrationElement(observation.getType(), true, null);
                     sumOfMigratedEntity.setValue( sumOfMigratedEntity.get() + 1 );
                 } catch (Exception ex) {
+                    LOGGER.warn("Hiba történt egy megfigyelés migrálásakkor! MongoID: " + observation.getPostgresId(), ex);
                     addNewMigrationElement(observation.getType(), false, ex);
                     addNewMigrationMessage( ex.getClass().getName() );
                     if( Configuration.getMigrationLevel().equals(MigrationSettingsLevel.OBSERVATION) ) {
@@ -260,18 +276,21 @@ public class Migrator extends Service<Boolean> {
         protected void succeeded() {
             super.succeeded();
             migrationMessageProperty.add("A migrálási folyamat külső hiba nélkül sikeresen végetért!");
+            LOGGER.info("A migrációs folyamat külső hiba nélkül sikeresen végetért!");
         }
 
         @Override
         protected void cancelled() {
             super.cancelled();
             migrationMessageProperty.add("A migrálási folyamatot megszakították!");
+            LOGGER.info("A migrációs folyamatot megszakítoták!");
         }
 
         @Override
         protected void failed() {
             super.failed();
             migrationMessageProperty.add("A migrálási folyamat külső hiba miatt végetért!");
+            LOGGER.error("A migrálási folyamat külső hiba miatt végetért!");
         }
     }
 

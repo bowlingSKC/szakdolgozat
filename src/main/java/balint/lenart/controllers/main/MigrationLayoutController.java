@@ -39,8 +39,11 @@ public class MigrationLayoutController {
     @FXML
     private void initialize() {
         initTableView();
+        bindItems();
         setDefaultState();
+    }
 
+    private void bindItems() {
         migrator.migrationMessageProperty().addListener((ListChangeListener<String>) c -> {
             if( c.next() && c.getAddedSize() > 0 ) {
                 String newMessage = c.getAddedSubList().get(0);
@@ -58,12 +61,24 @@ public class MigrationLayoutController {
 
         migrator.setOnSucceeded(event -> {
             NotificationUtil.showNotification(Alert.AlertType.INFORMATION, "Migrációs folyamat", "A migrációs folyamat siekresen véget ért!", "Az eltelt idő: " + " ms");
-            this.migrationProgressBar.progressProperty().unbind();
+            changeRunningState(true);
+            migrator.reset();
         });
 
         migrator.setOnFailed(event -> {
             NotificationUtil.showNotification(Alert.AlertType.ERROR, "Migrációs folyamat", "A migrációs folyamat váratlan hiba miatt véget ért!",
                     event.getSource().getException().getMessage());
+            changeRunningState(true);
+            migrator.reset();
+        });
+
+        migrator.migrationElementProperty().addListener((ListChangeListener<MigrationElement>) c -> {
+            Platform.runLater(() -> {
+                if( c.next() && c.getAddedSize() != 0 ) {
+                    MigrationElement newElement = c.getAddedSubList().get(0);
+                    migrationTable.getItems().add( newElement );
+                }
+            });
         });
     }
 
@@ -88,7 +103,6 @@ public class MigrationLayoutController {
     }
 
     private void setDefaultState() {
-        migrationProgressBar.setProgress(0D);
         migrationTable.getItems().clear();
         migrationOutput.clear();
         changeRunningState(false);
@@ -107,14 +121,6 @@ public class MigrationLayoutController {
 
         if( migrator.getState().equals(Worker.State.READY) ) {
             migrationProgressBar.progressProperty().bind( migrator.progressProperty() );
-            migrator.migrationElementProperty().addListener((ListChangeListener<MigrationElement>) c -> {
-               Platform.runLater(() -> {
-                   if( c.next() && c.getAddedSize() != 0 ) {
-                       MigrationElement newElement = c.getAddedSubList().get(0);
-                       migrationTable.getItems().add( newElement );
-                   }
-               });
-           });
             migrator.start();
         } else {
             NotificationUtil.showNotification(Alert.AlertType.ERROR, "Migráció",

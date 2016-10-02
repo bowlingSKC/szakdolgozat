@@ -11,4 +11,8 @@ public class DateUtils {
         return MSEC_FORMAT.format(date);
     }
 
+    public static String formatDateToLogFile(Date date) {
+        return new SimpleDateFormat("yyy-MM-dd-HH-mm-ss").format(date);
+    }
+
 }
