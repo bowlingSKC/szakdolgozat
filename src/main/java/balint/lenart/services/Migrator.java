@@ -13,10 +13,10 @@ import balint.lenart.model.helper.MigrationElement;
 import balint.lenart.model.helper.NamedEnum;
 import balint.lenart.model.observations.Observation;
 import balint.lenart.model.observations.ObservationType;
+import balint.lenart.utils.FXUtils;
 import com.google.common.collect.Lists;
 import javafx.beans.property.LongProperty;
 import javafx.beans.property.SimpleLongProperty;
-import javafx.beans.value.ObservableLongValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Service;
@@ -28,6 +28,7 @@ import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class Migrator extends Service<Boolean> {
 
@@ -47,14 +48,13 @@ public class Migrator extends Service<Boolean> {
     private final PostgresMatchingTableDAO postgresMatchingTableDAO;
 
     // Counters
-    private Long sumOfEntityInMongo;
-    private Long sumOfFailedEntityMigration = 0L;
+    private LongProperty sumOfEntityInMongo = new SimpleLongProperty(0L);           // all entity count in MongoDB
+    private LongProperty sumOfFailedEntityMigration = new SimpleLongProperty(0L);   // failed entity number
+    private LongProperty sumOfMigratedEntityCounter = new SimpleLongProperty(0L);   // success migration entity number
 
     // Migratior properties
     private ObservableList<String> migrationMessageProperty = FXCollections.observableArrayList();
     private ObservableList<MigrationElement> migrationElements = FXCollections.observableArrayList();
-    private LongProperty sumOfAllEntity = new SimpleLongProperty(0);
-    private LongProperty sumOfMigratedEntity = new SimpleLongProperty(0);
 
     // Accept only these entities
     public static final List<ObservationType> PASSED_TYPES = Lists.newArrayList(
@@ -98,22 +98,13 @@ public class Migrator extends Service<Boolean> {
         return migrationMessageProperty;
     }
 
-    public ObservableLongValue sumOfAllEntityProperty() {
-        return sumOfAllEntity;
-    }
-
-    public ObservableLongValue sumOfMigratedEntityProperty() {
-        return sumOfMigratedEntity;
-    }
-
     @Override
     public void reset() {
         super.reset();
-        sumOfEntityInMongo = 0L;
-        sumOfFailedEntityMigration = 0L;
+        sumOfEntityInMongo.setValue(0L);
+        sumOfFailedEntityMigration.setValue(0L);
+        sumOfMigratedEntityCounter.setValue(0L);
         migrationMessageProperty.clear();
-        sumOfAllEntity = new SimpleLongProperty(0);
-        sumOfMigratedEntity = new SimpleLongProperty(0);
         migrationElements.clear();
     }
 
@@ -129,6 +120,18 @@ public class Migrator extends Service<Boolean> {
         }
     }
 
+    public LongProperty sumOfEntityInMongoProperty() {
+        return sumOfEntityInMongo;
+    }
+
+    public LongProperty sumOfFailedEntityMigrationProperty() {
+        return sumOfFailedEntityMigration;
+    }
+
+    public LongProperty sumOfMigratedEntityCounterProperty() {
+        return sumOfMigratedEntityCounter;
+    }
+
     public class MigratorTask extends Task<Boolean> {
 
         @Override
@@ -136,19 +139,23 @@ public class Migrator extends Service<Boolean> {
             return startProcess();
         }
 
+        private void updateProgress() {
+            sumOfMigratedEntityCounter.setValue( sumOfMigratedEntityCounter.get() + 1 );
+            FXUtils.runInFxThread(() -> updateProgress(sumOfMigratedEntityCounter.doubleValue(), sumOfEntityInMongo.doubleValue()));
+        }
+
         private boolean startProcess() {
             migrationElements.clear();
             migrationMessageProperty.clear();
 
             migrationMessageProperty.add("A migrálási folyamat elkezdődött");
-            sumOfEntityInMongo = calculateMigrationsProcess();
-            migrationMessageProperty.add("MongoDB-ben talált dokumentumok száma: " + sumOfEntityInMongo);
-            sumOfAllEntity.setValue( sumOfEntityInMongo );
-            updateProgress(0, sumOfEntityInMongo);
+            sumOfEntityInMongo.setValue(calculateMigrationsProcess());
+            migrationMessageProperty.add("MongoDB-ben talált dokumentumok száma: " + sumOfEntityInMongo.get());
+            updateProgress();
 
             LOGGER.info("A migrálási folyamat elkezdődött");
             LOGGER.info("A migrációs folyamat tranzakciós szintje: " + Configuration.getMigrationLevel().getName());
-            LOGGER.info("MongoDB-ben talált dokumentumok száma: " + sumOfEntityInMongo);
+            LOGGER.info("MongoDB-ben talált dokumentumok száma: " + sumOfEntityInMongo.get());
 
             try {
                 PostgresConnection.getInstance().setAutoCommit(false);
@@ -185,17 +192,18 @@ public class Migrator extends Service<Boolean> {
         private void migrateUsers(User user) throws SQLException {
             try {
                 User persisted = postgresUserDAO.saveEntity(user);
+                updateProgress();
+
                 migrateDevices(persisted);
                 PostgresConnection.getInstance().commit();
 
+                sumOfMigratedEntityCounter.setValue( sumOfMigratedEntityCounter.get() + 1 );
                 addNewMigrationElement(MigrationElement.EntityType.USER, true, null);
-                sumOfMigratedEntity.setValue( sumOfMigratedEntity.get() + 1 );
-                updateProgress(getProgress() + 1, sumOfEntityInMongo);
                 LOGGER.trace("Felhasználó sikeresen migrálva, MongoID: " + user.getMongoId() + ", PostgresID: " + user.getPostgresId());
             } catch (SQLException ex) {
                 PostgresConnection.getInstance().rollback();
                 ex.printStackTrace();
-                sumOfFailedEntityMigration++;
+                sumOfFailedEntityMigration.setValue( sumOfFailedEntityMigration.get() + 1 );
 
                 LOGGER.warn("Hiba történt egy felhasználó migrálásakkor! MongoID: " + user.getMongoId(), ex);
                 addNewMigrationMessage( ex.getClass().getName() );
@@ -204,7 +212,7 @@ public class Migrator extends Service<Boolean> {
                 PostgresConnection.getInstance().rollback();
 
                 LOGGER.warn("Hiba történt egy felhasználó migrálásakkor! MongoID: " + user.getMongoId(), ex);
-                sumOfFailedEntityMigration++;
+                sumOfFailedEntityMigration.setValue( sumOfFailedEntityMigration.get() + 1 );
             }
         }
 
@@ -220,17 +228,18 @@ public class Migrator extends Service<Boolean> {
                     Device persistedDevice = postgresDeviceDAO.saveEntity(device);
                     Episode persistedEpisode = migrateEpisodes(owner, persistedDevice);
                     postgresMatchingTableDAO.insertToEpisodeDevice(persistedEpisode, persistedDevice);
+                    updateProgress();
 
                     migrateObservations(persistedEpisode, persistedDevice);
 
+                    sumOfMigratedEntityCounter.setValue( sumOfMigratedEntityCounter.get() + 1 );
                     LOGGER.trace("Eszköz sikeresen migrálva, MongoID: " + device.getMongoId() + ", PostgresID: " + device.getPostgresId());
                     addNewMigrationElement(MigrationElement.EntityType.DEVICE, true, null);
-                    sumOfMigratedEntity.setValue( sumOfMigratedEntity.get() + 1 );
-
                 } catch (Exception ex) {
                     addNewMigrationMessage( ex.getClass().getName() );
                     addNewMigrationElement(MigrationElement.EntityType.DEVICE, false, ex);
                     LOGGER.warn("Hiba történt egy eszköz migrálásakkor! MongoID: " + device.getMongoId(), ex);
+                    sumOfFailedEntityMigration.setValue( sumOfFailedEntityMigration.get() + 1 );
                     if( Configuration.getMigrationLevel().equals(MigrationSettingsLevel.DEVICE) ) {
                         PostgresConnection.getInstance().rollback(lastDeviceSP);
                     } else {
@@ -256,13 +265,15 @@ public class Migrator extends Service<Boolean> {
                     lastObservationSP = PostgresConnection.getInstance().setSavepoint();
                     postgresEpEventDAO.saveEntity(observation);
 
+                    updateProgress();
                     LOGGER.trace("Megfigyelés sikeresen migrálva, PostgresID: " + observation.getPostgresId());
                     addNewMigrationElement(observation.getType(), true, null);
-                    sumOfMigratedEntity.setValue( sumOfMigratedEntity.get() + 1 );
+                    sumOfMigratedEntityCounter.setValue( sumOfMigratedEntityCounter.get() + 1 );
                 } catch (Exception ex) {
                     LOGGER.warn("Hiba történt egy megfigyelés migrálásakkor! MongoID: " + observation.getPostgresId(), ex);
                     addNewMigrationElement(observation.getType(), false, ex);
                     addNewMigrationMessage( ex.getClass().getName() );
+                    sumOfFailedEntityMigration.setValue( sumOfFailedEntityMigration.get() + 1 );
                     if( Configuration.getMigrationLevel().equals(MigrationSettingsLevel.OBSERVATION) ) {
                         PostgresConnection.getInstance().rollback(lastObservationSP);
                     } else {

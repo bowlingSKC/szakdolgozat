@@ -85,9 +85,17 @@ public class Configuration {
     }
 
     public interface Constants  {
-        String WINDOW_TITLE = "Lavinia adatbázis migráló";
-        String EMPTY_TABLE_MESSAGE = "Nincs megjeleníthető adat";
-        double WINDOW_MIN_WIDTH = 650;
-        double WINDOW_MIN_HEIGHT = 450;
+        String WINDOW_TITLE = "Lavinia adatbázis migráló";          // JavaFX Window title
+        String EMPTY_TABLE_MESSAGE = "Nincs megjeleníthető adat";   // TableView default empty caption
+        double WINDOW_MIN_WIDTH = 650;                              // Window min width size
+        double WINDOW_MIN_HEIGHT = 450;                             // Window min height size
+
+        String PBAR_TOOLTIP = "A folyamat állapotát mutatja.\n" +
+                "Az összes MongoDB-beli dokumentumra vetíti a folyamatot, így hibás entitás esetén csekély értékkel " +
+                "eltérhet a valódi állapottól.";                    // ProgressBar tooltip in Migration tab
+        String SUCCESS_MIGRATION_LABEL = "Sikeresen migrált entitások száma";
+        String FAILED_MIGRATION_LABEL = "Sikertelenül migrált entitások száma\n" +
+                "Nem veszi figyelembe a sikertelenül migrált entitáshoz tatrozó további entitások számát";
+        String ALL_MIGRATION_LABEL = "Az összes entitások száma MondoDB-ben";
     }
 }

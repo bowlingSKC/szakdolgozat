@@ -8,25 +8,25 @@ import balint.lenart.utils.DateUtils;
 import balint.lenart.utils.FXUtils;
 import balint.lenart.utils.NotificationUtil;
 import javafx.application.Platform;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener;
 import javafx.concurrent.Worker;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
+import org.apache.log4j.Logger;
 
 import java.util.Date;
-import java.util.concurrent.ExecutionException;
 
 public class MigrationLayoutController {
 
+    private static final Logger LOGGER = Logger.getLogger(MigrationLayoutController.class);
     private static final Migrator migrator = Migrator.getInstance();
 
     @FXML private HBox statBox;
-    @FXML private Label sumOfMigratedEntity;
-    @FXML private Label sumOfAllEntity;
+    @FXML private Label sumOfMigratedEntityLabel;
+    @FXML private Label sumOfFailedEntityLabel;
+    @FXML private Label sumOfAllEntityLabel;
     @FXML private Button startButton;
     @FXML private Button cancelButton;
     @FXML private ProgressBar migrationProgressBar;
@@ -39,7 +39,23 @@ public class MigrationLayoutController {
     @FXML
     private void initialize() {
         initTableView();
+        initStatLabels();
+        initProgressBar();
+        bindMigratorProperties();
+        setDefaultState();
+    }
 
+    private void initProgressBar() {
+        migrationProgressBar.setTooltip(new Tooltip(Configuration.Constants.PBAR_TOOLTIP));
+    }
+
+    private void initStatLabels() {
+        sumOfAllEntityLabel.setTooltip(new Tooltip(Configuration.Constants.ALL_MIGRATION_LABEL));
+        sumOfFailedEntityLabel.setTooltip(new Tooltip(Configuration.Constants.FAILED_MIGRATION_LABEL));
+        sumOfMigratedEntityLabel.setTooltip(new Tooltip(Configuration.Constants.SUCCESS_MIGRATION_LABEL));
+    }
+
+    private void bindMigratorProperties() {
         migrator.migrationMessageProperty().addListener((ListChangeListener<String>) c -> {
             if( c.next() && c.getAddedSize() > 0 ) {
                 String newMessage = c.getAddedSubList().get(0);
@@ -47,12 +63,16 @@ public class MigrationLayoutController {
             }
         });
 
-        migrator.sumOfAllEntityProperty().addListener((observable, oldValue, newValue) -> {
-            this.sumOfAllEntity.setText(String.valueOf(newValue));
+        migrator.sumOfEntityInMongoProperty().addListener((observable, oldValue, newValue) -> {
+            FXUtils.runInFxThread(() -> sumOfAllEntityLabel.setText(String.valueOf(newValue)));
         });
 
-        migrator.sumOfMigratedEntityProperty().addListener((observable, oldValue, newValue) -> {
-            this.sumOfMigratedEntity.setText(String.valueOf(newValue));
+        migrator.sumOfFailedEntityMigrationProperty().addListener((observable, oldValue, newValue) -> {
+            FXUtils.runInFxThread(() -> sumOfFailedEntityLabel.setText(String.valueOf(newValue)));
+        });
+
+        migrator.sumOfMigratedEntityCounterProperty().addListener((observable, oldValue, newValue) -> {
+            FXUtils.runInFxThread(() -> sumOfMigratedEntityLabel.setText(String.valueOf(newValue)));
         });
 
         migrator.setOnSucceeded(event -> {
@@ -74,8 +94,6 @@ public class MigrationLayoutController {
                 }
             });
         });
-
-        setDefaultState();
     }
 
     @FXML
@@ -100,6 +118,11 @@ public class MigrationLayoutController {
         migrationOutput.clear();
         changeRunningState(false);
         migrator.reset();
+        migrationProgressBar.progressProperty().setValue(0);
+
+        sumOfAllEntityLabel.setText("0");
+        sumOfFailedEntityLabel.setText("0");
+        sumOfMigratedEntityLabel.setText("0");
     }
 
     private void changeRunningState(boolean startVisible) {
@@ -110,12 +133,13 @@ public class MigrationLayoutController {
 
     @FXML
     private void handleStart() {
+        setDefaultState();
         changeRunningState(true);
 
         if( migrator.getState().equals(Worker.State.READY) ) {
             migrationProgressBar.progressProperty().unbind();
             migrationProgressBar.progressProperty().bind( migrator.progressProperty() );
-            Platform.runLater(migrator::start);
+            migrator.start();
         } else {
             NotificationUtil.showNotification(Alert.AlertType.ERROR, "Migráció",
                     "A migrációs folyamat nem indítható el!", "A folyamat jelenleg is fut vagy még nem áll készen a futásra.");
