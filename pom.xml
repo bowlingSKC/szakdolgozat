@@ -7,7 +7,6 @@
     <groupId>lavinia</groupId>
     <artifactId>balint.lenart</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <description>Degree Thesis</description>
     <developers>
         <developer>
             <name>Lenart Balint</name>
@@ -28,20 +27,6 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>9.4.1209.jre7</version>
-        </dependency>
-
-        <!-- JUnit test framework -->
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.12</version>
-        </dependency>
-
-        <!-- Mockito test framework -->
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-all</artifactId>
-            <version>1.10.19</version>
         </dependency>
 
         <!-- Google Core Libraries for Java -->

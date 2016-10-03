@@ -5,20 +5,20 @@ import balint.lenart.model.helper.MigrationElement;
 import balint.lenart.model.helper.NamedEnum;
 import balint.lenart.services.Migrator;
 import balint.lenart.utils.DateUtils;
+import balint.lenart.utils.FXUtils;
 import balint.lenart.utils.NotificationUtil;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.ListChangeListener;
-import javafx.collections.ObservableList;
 import javafx.concurrent.Worker;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
-import javafx.util.Callback;
 
 import java.util.Date;
+import java.util.concurrent.ExecutionException;
 
 public class MigrationLayoutController {
 
@@ -39,11 +39,7 @@ public class MigrationLayoutController {
     @FXML
     private void initialize() {
         initTableView();
-        bindItems();
-        setDefaultState();
-    }
 
-    private void bindItems() {
         migrator.migrationMessageProperty().addListener((ListChangeListener<String>) c -> {
             if( c.next() && c.getAddedSize() > 0 ) {
                 String newMessage = c.getAddedSubList().get(0);
@@ -52,24 +48,22 @@ public class MigrationLayoutController {
         });
 
         migrator.sumOfAllEntityProperty().addListener((observable, oldValue, newValue) -> {
-            Platform.runLater(() -> this.sumOfAllEntity.setText(String.valueOf(newValue)));
+            this.sumOfAllEntity.setText(String.valueOf(newValue));
         });
 
         migrator.sumOfMigratedEntityProperty().addListener((observable, oldValue, newValue) -> {
-            Platform.runLater(() -> this.sumOfMigratedEntity.setText(String.valueOf(newValue)));
+            this.sumOfMigratedEntity.setText(String.valueOf(newValue));
         });
 
         migrator.setOnSucceeded(event -> {
-            NotificationUtil.showNotification(Alert.AlertType.INFORMATION, "Migrációs folyamat", "A migrációs folyamat siekresen véget ért!", "Az eltelt idő: " + " ms");
-            changeRunningState(true);
-            migrator.reset();
+            NotificationUtil.showNotification(Alert.AlertType.INFORMATION, "Migrációs folyamat", "A migrációs folyamat siekresen véget ért!", "");
+            changeRunningState(false);
         });
 
         migrator.setOnFailed(event -> {
             NotificationUtil.showNotification(Alert.AlertType.ERROR, "Migrációs folyamat", "A migrációs folyamat váratlan hiba miatt véget ért!",
                     event.getSource().getException().getMessage());
-            changeRunningState(true);
-            migrator.reset();
+            changeRunningState(false);
         });
 
         migrator.migrationElementProperty().addListener((ListChangeListener<MigrationElement>) c -> {
@@ -80,14 +74,13 @@ public class MigrationLayoutController {
                 }
             });
         });
+
+        setDefaultState();
     }
 
     @FXML
     private void handleCancel() {
-        if( migrator.getState().equals(Worker.State.RUNNING) ) {
-            migrator.cancel();
-        }
-
+        migrator.cancel();
         changeRunningState(false);
     }
 
@@ -120,8 +113,9 @@ public class MigrationLayoutController {
         changeRunningState(true);
 
         if( migrator.getState().equals(Worker.State.READY) ) {
+            migrationProgressBar.progressProperty().unbind();
             migrationProgressBar.progressProperty().bind( migrator.progressProperty() );
-            migrator.start();
+            Platform.runLater(migrator::start);
         } else {
             NotificationUtil.showNotification(Alert.AlertType.ERROR, "Migráció",
                     "A migrációs folyamat nem indítható el!", "A folyamat jelenleg is fut vagy még nem áll készen a futásra.");

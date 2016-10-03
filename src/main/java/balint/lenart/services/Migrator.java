@@ -140,13 +140,14 @@ public class Migrator extends Service<Boolean> {
             migrationElements.clear();
             migrationMessageProperty.clear();
 
-            LOGGER.info("A migrálási folyamat elkezdődött");
-            LOGGER.info("A migrációs folyamat tranzakciós szintje: " + Configuration.getMigrationLevel().getName());
             migrationMessageProperty.add("A migrálási folyamat elkezdődött");
             sumOfEntityInMongo = calculateMigrationsProcess();
-            updateProgress(0L, sumOfEntityInMongo);
             migrationMessageProperty.add("MongoDB-ben talált dokumentumok száma: " + sumOfEntityInMongo);
             sumOfAllEntity.setValue( sumOfEntityInMongo );
+            updateProgress(0, sumOfEntityInMongo);
+
+            LOGGER.info("A migrálási folyamat elkezdődött");
+            LOGGER.info("A migrációs folyamat tranzakciós szintje: " + Configuration.getMigrationLevel().getName());
             LOGGER.info("MongoDB-ben talált dokumentumok száma: " + sumOfEntityInMongo);
 
             try {
@@ -187,9 +188,9 @@ public class Migrator extends Service<Boolean> {
                 migrateDevices(persisted);
                 PostgresConnection.getInstance().commit();
 
-                updateProgress(getProgress() + 1 , sumOfEntityInMongo);
                 addNewMigrationElement(MigrationElement.EntityType.USER, true, null);
                 sumOfMigratedEntity.setValue( sumOfMigratedEntity.get() + 1 );
+                updateProgress(getProgress() + 1, sumOfEntityInMongo);
                 LOGGER.trace("Felhasználó sikeresen migrálva, MongoID: " + user.getMongoId() + ", PostgresID: " + user.getPostgresId());
             } catch (SQLException ex) {
                 PostgresConnection.getInstance().rollback();
@@ -254,7 +255,6 @@ public class Migrator extends Service<Boolean> {
                 try {
                     lastObservationSP = PostgresConnection.getInstance().setSavepoint();
                     postgresEpEventDAO.saveEntity(observation);
-                    updateProgress(getProgress() + 1, sumOfEntityInMongo);
 
                     LOGGER.trace("Megfigyelés sikeresen migrálva, PostgresID: " + observation.getPostgresId());
                     addNewMigrationElement(observation.getType(), true, null);
@@ -275,6 +275,7 @@ public class Migrator extends Service<Boolean> {
         @Override
         protected void succeeded() {
             super.succeeded();
+            reset();
             migrationMessageProperty.add("A migrálási folyamat külső hiba nélkül sikeresen végetért!");
             LOGGER.info("A migrációs folyamat külső hiba nélkül sikeresen végetért!");
         }
@@ -282,6 +283,7 @@ public class Migrator extends Service<Boolean> {
         @Override
         protected void cancelled() {
             super.cancelled();
+            reset();
             migrationMessageProperty.add("A migrálási folyamatot megszakították!");
             LOGGER.info("A migrációs folyamatot megszakítoták!");
         }
@@ -289,6 +291,7 @@ public class Migrator extends Service<Boolean> {
         @Override
         protected void failed() {
             super.failed();
+            reset();
             migrationMessageProperty.add("A migrálási folyamat külső hiba miatt végetért!");
             LOGGER.error("A migrálási folyamat külső hiba miatt végetért!");
         }
