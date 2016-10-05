@@ -1,7 +1,9 @@
 package balint.lenart;
 
+import balint.lenart.model.helper.DatabaseConnectionProperties;
 import com.google.common.collect.Maps;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.BooleanUtils;
 
 import java.io.*;
 import java.net.URL;
@@ -61,12 +63,32 @@ public class Configuration {
         return SETTINGS.get(key);
     }
 
+    public static Integer getInt(String key) {
+        return Integer.valueOf(get(key));
+    }
+
     public static void set(String key, String value) {
         SETTINGS.put(key, value);
     }
 
-    public static void add(String key, String value) {
-        SETTINGS.put(key, value);
+    public static DatabaseConnectionProperties getDefaultMongoConnectionProperties() {
+        return new DatabaseConnectionProperties(
+                get("mongo.connection.database"),
+                getInt("mongo.connection.port"),
+                get("mongo.connection.database"),
+                get("mongo.connection.username"),
+                get("mongo.connection.password")
+        );
+    }
+
+    public static DatabaseConnectionProperties getDefaultPostgresConnectionProperties() {
+        return new DatabaseConnectionProperties(
+                get("postgres.connection.host"),
+                getInt("postgres.connection.port"),
+                get("postgres.connection.database"),
+                get("postgres.connection.username"),
+                get("postgres.connection.password")
+        );
     }
 
     public static MigrationSettingsLevel getMigrationLevel() {
@@ -82,6 +104,10 @@ public class Configuration {
 
     public static void setMigrationLevel(MigrationSettingsLevel migrationLevel) {
         SETTINGS.put("migration.tranlevel", migrationLevel.name());
+    }
+
+    public static boolean getBoolean(String key) {
+        return BooleanUtils.toBoolean(get(key));
     }
 
     public interface Constants  {

@@ -2,10 +2,7 @@ package balint.lenart.utils;
 
 import balint.lenart.model.helper.DatabaseConnectionProperties;
 import com.google.common.collect.Lists;
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientOptions;
-import com.mongodb.MongoCredential;
-import com.mongodb.ServerAddress;
+import com.mongodb.*;
 import org.apache.commons.lang3.StringUtils;
 
 import java.sql.Connection;
@@ -58,7 +55,7 @@ public class DbUtil {
 
     // FIXME: 2016.09.27. very slow operation
     public static boolean testMongoConnection(DatabaseConnectionProperties properties) {
-        if(StringUtils.isNotEmpty(properties.getPassword())) {
+        if(properties.useAuthentication()) {
             return testMongoAuthenticationConnection(properties);
         } else {
             return testMongoWithoutAuthenticationConnection(properties);
@@ -75,7 +72,7 @@ public class DbUtil {
             client.close();
 
             return true;
-        } catch (Exception ex) {
+        } catch (MongoException ex) {
             return false;
         }
     }
@@ -92,12 +89,16 @@ public class DbUtil {
                     properties.getPort()
             );
             MongoClient client = new MongoClient(serverAddress, Lists.newArrayList(credential));
-            client.getAddress();    // it is throw exception if connection is not successful
-
+            client.getDatabase(properties.getDbName()).listCollections();
             client.close();
             return true;
-        } catch (Exception ex) {
+        } catch (MongoException ex) {
             return false;
         }
+    }
+
+    public static boolean checkConnection(DatabaseConnectionProperties postgresProperties,
+                                          DatabaseConnectionProperties mongoProperties) {
+        return testMongoConnection(mongoProperties) && testPostgresConnection(postgresProperties);
     }
 }

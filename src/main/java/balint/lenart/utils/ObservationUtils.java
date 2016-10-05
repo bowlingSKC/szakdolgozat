@@ -1,6 +1,8 @@
 package balint.lenart.utils;
 
 import balint.lenart.model.observations.*;
+import balint.lenart.model.observations.helper.EventItemContent;
+import com.google.common.collect.Lists;
 import org.apache.commons.lang3.BooleanUtils;
 import org.bson.Document;
 
@@ -28,6 +30,10 @@ public class ObservationUtils {
                 break;
             case MEDICATION_RECORD:
                 observation = createMedicationEvent(document);
+                break;
+            case MEAL_LOG_RECORD:
+                observation = createMealLogRecord(document);
+                break;
         }
 
         observation.setTsReceived( document.getDate("timestampIn") );
@@ -50,6 +56,29 @@ public class ObservationUtils {
             }
         }
         throw new RuntimeException("Unhandled observation type: " + documentType);
+    }
+
+    private static Observation createMealLogRecord(Document document) {
+        Document contentDoc = document.get("content", Document.class);
+        Meal meal = new Meal();
+        //meal.setTsMealEnd( document.get("content", Document.class).getDate("timestamp") );
+
+        MealItem mealItem = new MealItem();
+        mealItem.setMeal( meal );
+        mealItem.setQuantity( contentDoc.containsKey("quantity") ? contentDoc.getDouble("quantity").floatValue() : 1 );
+        mealItem.setItemLabel( contentDoc.getString("label") );
+        mealItem.setUnitId( contentDoc.getInteger("itemId") );
+        mealItem.setUnitLabel( contentDoc.getString("unitLabel") );
+
+        Document itemContentDoc = contentDoc.get("content", Document.class);
+        if( itemContentDoc != null ) {
+            itemContentDoc.forEach((key, value) ->
+                    mealItem.getItemContents().add(new EventItemContent(Integer.valueOf(key), ((Double)value).floatValue())));
+        }
+
+        meal.setMealItems(Lists.newArrayList(mealItem));
+        mealItem.setItemTypeCode( 0 );    // FIXME: 2016.10.05. replace from const
+        return meal;
     }
 
     private static Observation createMedicationEvent(Document document) {

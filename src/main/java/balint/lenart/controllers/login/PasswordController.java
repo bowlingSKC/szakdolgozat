@@ -1,12 +1,10 @@
 package balint.lenart.controllers.login;
 
 import balint.lenart.Configuration;
-import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.PasswordField;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.log4j.Logger;
 
 public class PasswordController {
@@ -23,7 +21,7 @@ public class PasswordController {
 
     @FXML
     private void initialize() {
-        if(BooleanUtils.toBoolean(Configuration.get("application.login.autofillpassword"))) {
+        if(Configuration.getBoolean("application.login.autofillpassword")) {
             passwordField.setText( PASSWORD );
         }
     }

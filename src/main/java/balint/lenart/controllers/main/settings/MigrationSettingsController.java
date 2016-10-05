@@ -66,9 +66,9 @@ public class MigrationSettingsController implements RefreshTabController {
 
     @Override
     public void refreshTab() {
-        dumpBeforeMigrationCheckBox.setSelected(BooleanUtils.toBoolean(Configuration.get("backup.createBeforeMigration")));
-        migrationLogExceptionCheckBox.setSelected(BooleanUtils.toBoolean(Configuration.get("migration.show.exceptions")));
-        migrationLogEntityCheckBox.setSelected(BooleanUtils.toBoolean(Configuration.get("migration.show.entities")));
+        dumpBeforeMigrationCheckBox.setSelected(Configuration.getBoolean("backup.createBeforeMigration"));
+        migrationLogExceptionCheckBox.setSelected(Configuration.getBoolean("migration.show.exceptions"));
+        migrationLogEntityCheckBox.setSelected(Configuration.getBoolean("migration.show.entities"));
         levelSelector.getSelectionModel().select(Configuration.getMigrationLevel());
     }
 }

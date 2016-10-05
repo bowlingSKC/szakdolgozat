@@ -12,12 +12,11 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
-public class MealItem {
+public class MealItem extends Observation {
 
-    private Long postgresId;
     private int itemTypeCode;
     private Long foodId;
-    private Long recipdeId;
+    private Long recipeId;
     private String itemLabel;
     private Meal meal;
     private float quantity;
@@ -27,4 +26,8 @@ public class MealItem {
     private List<EventItemContent> itemContents = Lists.newArrayList();
     private List<EventItemParContent> itemParContents = Lists.newArrayList();
 
+    @Override
+    public ObservationType getType() {
+        return ObservationType.MEAL_LOG_RECORD;
+    }
 }

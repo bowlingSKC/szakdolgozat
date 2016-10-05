@@ -2,6 +2,7 @@ package balint.lenart.dao.postgres;
 
 import balint.lenart.Configuration;
 import balint.lenart.model.observations.*;
+import balint.lenart.model.observations.helper.EventItemContent;
 
 import java.sql.*;
 
@@ -64,6 +65,53 @@ public class PostgresEpEventDAO {
             saveWeightMeas((WeightMeas) observation);
         } else if( observation instanceof Medication ) {
             saveMedicationEvent((Medication) observation);
+        } else if( observation instanceof Meal ) {
+            saveMealEvent((Meal)observation);
+        }
+    }
+
+    private void saveMealEvent(Meal observation) throws SQLException {
+        PreparedStatement insertMealStatement = PostgresConnection.getInstance().getConnection().prepareStatement(
+                "INSERT INTO " + getSchemaName() + ".event_meal(event_id, ts_meal_end, meal_type_code, glyc_load) " +
+                        "VALUES(?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS
+        );
+        insertMealStatement.setLong(1, observation.getPostgresId());
+        insertMealStatement.setDate(2, new Date(new java.util.Date().getTime()));
+        if(observation.getMealTypeCode() != null) {
+            insertMealStatement.setInt(3, observation.getMealTypeCode());
+        } else {
+            insertMealStatement.setNull(3, Types.INTEGER);
+        }
+        insertMealStatement.setNull(4, Types.FLOAT);
+        insertMealStatement.execute();
+
+        for(MealItem mealItem : observation.getMealItems()) {
+            PreparedStatement insertMealItem = PostgresConnection.getInstance().getConnection().prepareStatement(
+                    "INSERT INTO " + getSchemaName() + ".event_mealitem(event_id, item_type_code, item_label, meal_id, quantity, " +
+                            "unit_id, unit_label) VALUES(?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS
+            );
+            insertMealItem.setLong(1, mealItem.getMeal().getPostgresId());
+            insertMealItem.setInt(2, mealItem.getItemTypeCode());
+            insertMealItem.setString(3, mealItem.getItemLabel());
+            insertMealItem.setLong(4, mealItem.getMeal().getPostgresId());
+            insertMealItem.setDouble(5, mealItem.getQuantity());
+            insertMealItem.setLong(6, mealItem.getUnitId());
+            insertMealItem.setString(7, mealItem.getUnitLabel());
+            insertMealItem.execute();
+
+            ResultSet mealItemId = insertMealItem.getGeneratedKeys();
+            if( mealItemId.next() ) {
+                long mealItemIdResult = mealItemId.getLong(1);
+                for (EventItemContent eventItemContent : mealItem.getItemContents()) {
+                    PreparedStatement insertEventItem = PostgresConnection.getInstance().getConnection().prepareStatement(
+                            "INSERT INTO " + getSchemaName() + ".event_item_content(item_id, nutr_id, quantity) VALUES (?, ?, ?)"
+                    );
+                    insertEventItem.setLong(1, mealItemIdResult);
+                    insertEventItem.setLong(2, eventItemContent.getNutrientId());
+                    insertEventItem.setDouble(3, eventItemContent.getQuantity());
+                    insertEventItem.execute();
+                }
+            }
         }
     }
 

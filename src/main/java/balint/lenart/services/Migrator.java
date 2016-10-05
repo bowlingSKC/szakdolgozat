@@ -21,14 +21,12 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Service;
 import javafx.concurrent.Task;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.log4j.Logger;
 
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 public class Migrator extends Service<Boolean> {
 
@@ -59,7 +57,8 @@ public class Migrator extends Service<Boolean> {
     // Accept only these entities
     public static final List<ObservationType> PASSED_TYPES = Lists.newArrayList(
             ObservationType.NOTIFICATION_RECORD, ObservationType.WEIGHT_RECORD, ObservationType.BLOOD_GLUCOSE_RECORD,
-            ObservationType.BLOOD_PRESSURE_RECORD, ObservationType.PA_LOG_RECORD, ObservationType.MEDICATION_RECORD
+            ObservationType.BLOOD_PRESSURE_RECORD, ObservationType.PA_LOG_RECORD, ObservationType.MEDICATION_RECORD,
+            ObservationType.MEAL_LOG_RECORD
     );
 
     // Savepoints
@@ -109,13 +108,13 @@ public class Migrator extends Service<Boolean> {
     }
 
     private void addNewMigrationElement(NamedEnum type, boolean success, Throwable ex) {
-        if(BooleanUtils.toBoolean(Configuration.get("migration.show.entities"))) {
+        if(Configuration.getBoolean("migration.show.entities")) {
             migrationElements.add(new MigrationElement(new Date(), type, success, ex));
         }
     }
 
     private void addNewMigrationMessage(String message) {
-        if(BooleanUtils.toBoolean(Configuration.get("migration.show.exceptions"))) {
+        if(Configuration.getBoolean("migration.show.exceptions")) {
             migrationMessageProperty.add(message);
         }
     }
@@ -197,7 +196,7 @@ public class Migrator extends Service<Boolean> {
                 migrateDevices(persisted);
                 PostgresConnection.getInstance().commit();
 
-                sumOfMigratedEntityCounter.setValue( sumOfMigratedEntityCounter.get() + 1 );
+                updateProgress();
                 addNewMigrationElement(MigrationElement.EntityType.USER, true, null);
                 LOGGER.trace("Felhasználó sikeresen migrálva, MongoID: " + user.getMongoId() + ", PostgresID: " + user.getPostgresId());
             } catch (SQLException ex) {
@@ -232,7 +231,6 @@ public class Migrator extends Service<Boolean> {
 
                     migrateObservations(persistedEpisode, persistedDevice);
 
-                    sumOfMigratedEntityCounter.setValue( sumOfMigratedEntityCounter.get() + 1 );
                     LOGGER.trace("Eszköz sikeresen migrálva, MongoID: " + device.getMongoId() + ", PostgresID: " + device.getPostgresId());
                     addNewMigrationElement(MigrationElement.EntityType.DEVICE, true, null);
                 } catch (Exception ex) {
@@ -268,7 +266,6 @@ public class Migrator extends Service<Boolean> {
                     updateProgress();
                     LOGGER.trace("Megfigyelés sikeresen migrálva, PostgresID: " + observation.getPostgresId());
                     addNewMigrationElement(observation.getType(), true, null);
-                    sumOfMigratedEntityCounter.setValue( sumOfMigratedEntityCounter.get() + 1 );
                 } catch (Exception ex) {
                     LOGGER.warn("Hiba történt egy megfigyelés migrálásakkor! MongoID: " + observation.getPostgresId(), ex);
                     addNewMigrationElement(observation.getType(), false, ex);
@@ -285,6 +282,7 @@ public class Migrator extends Service<Boolean> {
 
         @Override
         protected void succeeded() {
+            System.out.println( sumOfMigratedEntityCounter.get() );
             super.succeeded();
             reset();
             migrationMessageProperty.add("A migrálási folyamat külső hiba nélkül sikeresen végetért!");

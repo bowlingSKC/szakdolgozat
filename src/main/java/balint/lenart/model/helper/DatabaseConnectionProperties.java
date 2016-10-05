@@ -3,6 +3,7 @@ package balint.lenart.model.helper;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 
 @Data
 @NoArgsConstructor
@@ -17,6 +18,10 @@ public class DatabaseConnectionProperties {
 
     public String getJDBCConnectionUrl() {
         return "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
+    }
+
+    public boolean useAuthentication() {
+        return StringUtils.isNotEmpty(userName) && StringUtils.isNotEmpty(password);
     }
 
 }

@@ -1,6 +1,8 @@
 package balint.lenart;
 
+import balint.lenart.controllers.install.InstallLayoutController;
 import balint.lenart.controllers.login.PasswordController;
+import balint.lenart.utils.DbUtil;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -38,6 +40,32 @@ public class Main extends Application {
     }
 
     private void loginCallback() {
+        if( DbUtil.checkConnection(Configuration.getDefaultMongoConnectionProperties(),
+                Configuration.getDefaultPostgresConnectionProperties()) ) {
+            loadMigrationUI();
+        } else {
+            loadInstallUI();
+        }
+    }
+
+    private void loadInstallUI() {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/layouts/installLayout.fxml"));
+        try {
+            Pane layout = loader.load();
+            Scene scene = new Scene(layout);
+            this.primaryStage.setScene(scene);
+            this.primaryStage.centerOnScreen();
+            this.primaryStage.setResizable(false);
+
+            InstallLayoutController controller = loader.getController();
+            controller.setSaveCallback(this::loadMigrationUI);
+        } catch (Exception ex) {
+            LOGGER.error("A felhasználói felület betöltése sikertelen", ex);
+            ex.printStackTrace();
+        }
+    }
+
+    private void loadMigrationUI() {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/layouts/main/RootLayout.fxml"));
         try {
             Pane layout = loader.load();
