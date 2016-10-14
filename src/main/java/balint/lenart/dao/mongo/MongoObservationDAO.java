@@ -1,7 +1,9 @@
 package balint.lenart.dao.mongo;
 
 import balint.lenart.model.Device;
+import balint.lenart.model.observations.Anamnesis;
 import balint.lenart.model.observations.Observation;
+import balint.lenart.model.observations.ObservationType;
 import balint.lenart.services.Migrator;
 import balint.lenart.utils.ObservationUtils;
 import com.google.common.collect.Lists;
@@ -16,7 +18,7 @@ import java.util.List;
 
 public class MongoObservationDAO {
 
-    private final MongoCollection observationCollection;
+    private final MongoCollection<Document> observationCollection;
 
     public MongoObservationDAO() {
         this.observationCollection = MongoConnection.getInstance().getDatabase().getCollection("Observation");
@@ -46,6 +48,28 @@ public class MongoObservationDAO {
             }
         }
         observations.forEach(observation -> observation.setSourceDevice(device));
+        return observations;
+    }
+
+    public Anamnesis getAnamnesisByDevice(Device device) {
+        Anamnesis result = null;
+        Document filter = new Document("device", new DBRef("Device", new ObjectId(device.getMongoId())));
+        FindIterable<Document> documents = observationCollection.find(filter);
+        for(Document doc : documents) {
+            result = (Anamnesis) ObservationUtils.fillByDocument(doc);
+        }
+        return result;
+    }
+
+    public List<Observation> getObservationsByDeviceAndType(Device device, ObservationType type) {
+        Document filter = new Document()
+                .append("device", new DBRef("Device", new ObjectId(device.getMongoId())))
+                .append("type", type.getClassName());
+        FindIterable<Document> documents = observationCollection.find(filter);
+        List<Observation> observations = Lists.newArrayList();
+        for(Document doc : documents) {
+            observations.add(ObservationUtils.fillByDocument(doc));
+        }
         return observations;
     }
 }

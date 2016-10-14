@@ -1,13 +1,10 @@
 package balint.lenart.model.observations;
 
-import balint.lenart.model.observations.helper.EventAnamnesisIllness;
-import com.google.common.collect.Lists;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Date;
-import java.util.List;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,7 +23,6 @@ public class Anamnesis extends Observation {
     private Float egfr;
     private Boolean steroidTreatment;
     private Float insulinDose;
-    private List<EventAnamnesisIllness> anamnesisIllnesses = Lists.newArrayList();
 
     @Override
     public ObservationType getType() {
