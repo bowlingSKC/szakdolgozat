@@ -15,11 +15,10 @@ import java.util.List;
 public class MealItem extends Observation {
 
     private int itemTypeCode;
-    private Long foodId;
     private Long recipeId;
     private String itemLabel;
     private Meal meal;
-    private float quantity;
+    private double quantity;
     private long unitId;
     private String unitLabel;
 

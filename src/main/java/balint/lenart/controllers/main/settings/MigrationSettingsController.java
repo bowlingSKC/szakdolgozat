@@ -5,6 +5,8 @@ import balint.lenart.MigrationSettingsLevel;
 import balint.lenart.controllers.RefreshTabController;
 import balint.lenart.controllers.helper.NamedEnumButtonCell;
 import balint.lenart.utils.NotificationUtil;
+import com.sun.deploy.config.Config;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import org.apache.commons.lang3.BooleanUtils;
@@ -18,11 +20,38 @@ public class MigrationSettingsController implements RefreshTabController {
     @FXML private CheckBox migrationLogEntityCheckBox;
     @FXML private ComboBox<MigrationSettingsLevel> levelSelector;
 
+    @FXML private CheckBox bloodGlucoseEnabled;
+    @FXML private CheckBox bloodPressureEnabled;
+    @FXML private CheckBox chgiEnabled;
+    @FXML private CheckBox commentEnabled;
+    @FXML private CheckBox anamnesisEnabled;
+    @FXML private CheckBox labEnabled;
+    @FXML private CheckBox mealEnabled;
+    @FXML private CheckBox medicationEnabled;
+    @FXML private CheckBox missingFoodEnabled;
+    @FXML private CheckBox paEnabled;
+    @FXML private CheckBox weightEnabled;
+
     @FXML
     private void initialize() {
         initLevelSelector();
         initQuestionTooltips();
+        initItemEnabledBoxes();
         refreshTab();
+    }
+
+    private void initItemEnabledBoxes() {
+        bloodGlucoseEnabled.setSelected( Configuration.getBoolean("migration.items.bloodglucose") );
+        bloodPressureEnabled.setSelected( Configuration.getBoolean("migration.items.bloodpressure") );
+        chgiEnabled.setSelected( Configuration.getBoolean("migration.items.chgi") );
+        commentEnabled.setSelected( Configuration.getBoolean("migration.items.comment") );
+        anamnesisEnabled.setSelected( Configuration.getBoolean("migration.items.dietlog") );
+        labEnabled.setSelected( Configuration.getBoolean("migration.items.lab") );
+        mealEnabled.setSelected( Configuration.getBoolean("migration.items.meal") );
+        medicationEnabled.setSelected( Configuration.getBoolean("migration.items.medication") );
+        missingFoodEnabled.setSelected( Configuration.getBoolean("migration.items.missingfood") );
+        paEnabled.setSelected( Configuration.getBoolean("migration.items.pa") );
+        weightEnabled.setSelected( Configuration.getBoolean("migration.items.weight") );
     }
 
     private void initQuestionTooltips() {
@@ -53,6 +82,16 @@ public class MigrationSettingsController implements RefreshTabController {
         Configuration.set("migration.show.exceptions", BooleanUtils.toStringTrueFalse(migrationLogExceptionCheckBox.isSelected()));
         Configuration.set("migration.show.entities", BooleanUtils.toStringTrueFalse(migrationLogEntityCheckBox.isSelected()));
         Configuration.setMigrationLevel(levelSelector.getSelectionModel().getSelectedItem());
+
+        Configuration.set("migration.items.bloodglucose", BooleanUtils.toStringTrueFalse(bloodGlucoseEnabled.isSelected()));
+        Configuration.set("migration.items.bloodpressure", BooleanUtils.toStringTrueFalse(bloodPressureEnabled.isSelected()));
+        Configuration.set("migration.items.chgi", BooleanUtils.toStringTrueFalse(chgiEnabled.isSelected()));
+        Configuration.set("migration.items.comment", BooleanUtils.toStringTrueFalse(commentEnabled.isSelected()));
+        Configuration.set("migration.items.lab", BooleanUtils.toStringTrueFalse(labEnabled.isSelected()));
+        Configuration.set("migration.items.meal", BooleanUtils.toStringTrueFalse(mealEnabled.isSelected()));
+        Configuration.set("migration.items.medication", BooleanUtils.toStringTrueFalse(medicationEnabled.isSelected()));
+        Configuration.set("migration.items.pa", BooleanUtils.toStringTrueFalse(paEnabled.isSelected()));
+        Configuration.set("migration.items.weight", BooleanUtils.toStringTrueFalse(weightEnabled.isSelected()));
 
         try {
             Configuration.saveToFile();

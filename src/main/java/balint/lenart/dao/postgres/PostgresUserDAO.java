@@ -5,12 +5,10 @@ import balint.lenart.model.User;
 import balint.lenart.utils.DbUtil;
 import balint.lenart.utils.Tuple;
 import balint.lenart.utils.UserUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.Random;
 
 public class PostgresUserDAO {
@@ -37,7 +35,11 @@ public class PostgresUserDAO {
         statement.setString(3, nameByUser.getSecond());
         statement.setString(4, user.getEmail());
         statement.setString(5, user.getMongoId());
-        statement.setString(6, user.getComment());
+        if(StringUtils.isNotEmpty(user.getComment())) {
+            statement.setString(6, user.getComment());
+        } else {
+            statement.setNull(6, Types.VARCHAR);
+        }
         statement.execute();
 
         ResultSet generatedKeys = statement.getGeneratedKeys();

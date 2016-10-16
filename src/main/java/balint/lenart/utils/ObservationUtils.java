@@ -3,8 +3,14 @@ package balint.lenart.utils;
 import balint.lenart.model.observations.*;
 import balint.lenart.model.observations.helper.EventItemContent;
 import com.google.common.collect.Lists;
+import com.mongodb.Block;
+import com.mongodb.client.FindIterable;
 import org.apache.commons.lang3.BooleanUtils;
 import org.bson.Document;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
 
 public class ObservationUtils {
 
@@ -35,7 +41,11 @@ public class ObservationUtils {
                 observation = createMealLogRecord(document);
                 break;
         }
+        fillTimestampDates(observation, document);
+        return observation;
+    }
 
+    private static void fillTimestampDates(Observation observation, Document document) {
         observation.setTsReceived( document.getDate("timestampIn") );
         observation.setTsRecorded( document.getDate("timestampIn") );
         observation.setTsSpecified( document.getDate("timestampRecorded") );
@@ -43,8 +53,6 @@ public class ObservationUtils {
         if(BooleanUtils.isTrue( document.getBoolean("deleted") )) {
             observation.setTsDeleted( document.getDate("timestampUpdated") );
         }
-
-        return observation;
     }
 
     public static ObservationType getObservationTypeByDocument(Document document) {
@@ -61,7 +69,11 @@ public class ObservationUtils {
     private static Observation createMealLogRecord(Document document) {
         Document contentDoc = document.get("content", Document.class);
         Meal meal = new Meal();
-        //meal.setTsMealEnd( document.get("content", Document.class).getDate("timestamp") );
+        if( contentDoc.containsKey("timestamp") ) {
+            meal.setHelperDateTime( contentDoc.getDate("timestamp") );
+        } else {
+            meal.setHelperDateTime( document.getDate("timestampRecorded") );
+        }
 
         MealItem mealItem = new MealItem();
         mealItem.setMeal( meal );
@@ -138,6 +150,70 @@ public class ObservationUtils {
         }
         event.setMessageText( document.get("content", Document.class).getString("extraString") );
         return event;
+    }
+
+    public static List<Observation> groupMealItems(FindIterable<Document> mongoMealObservations) {
+        List<Observation> observations = Lists.newArrayList();
+        List<Meal> helperMealList = Lists.newArrayList();
+        mongoMealObservations.forEach((Block<Document>) document -> {
+            Date refDate = document.get("content", Document.class).containsKey("timestamp") ?
+                    DateUtils.formatMealTimestampDate(document.get("content", Document.class).getString("timestamp")) :
+                    document.getDate("timestampRecorded");
+            int typeCode = document.get("content", Document.class).getInteger("itemTypeId");
+            Optional<Meal> mealOptional = helperMealList
+                    .stream()
+                    .filter(item -> DateUtils.isSameDay(item.getHelperDateTime(), refDate) &&
+                            item.getMealTypeCode() == typeCode)
+                    .findFirst();
+
+            Meal selectedMeal = null;
+            if( mealOptional.isPresent() ) {
+                selectedMeal = mealOptional.get();
+            } else {
+                selectedMeal = createNewMeal(document);
+                helperMealList.add(selectedMeal);
+            }
+
+            selectedMeal.getMealItems().add( createNewMealItem(selectedMeal, document) );
+        });
+        observations.addAll(helperMealList);
+        return observations;
+    }
+
+    private static MealItem createNewMealItem(Meal selectedMeal, Document document) {
+        Document contentDoc = document.get("content", Document.class);
+        MealItem mealItem = new MealItem();
+        mealItem.setMeal(selectedMeal);
+        mealItem.setQuantity( contentDoc.containsKey("quantity") ? getQuantityFromDocument(contentDoc, "quantity").floatValue() : 1.0f );
+        mealItem.setItemLabel( contentDoc.getString("label") );
+        mealItem.setUnitId( contentDoc.getInteger("itemId") );
+        mealItem.setUnitLabel( contentDoc.getString("unitLabel") );
+        if( contentDoc.containsKey("content") ) {
+            fillMealItemWithContent(mealItem, contentDoc.get("content", Document.class));
+        }
+        fillTimestampDates(mealItem, document);
+        return mealItem;
+    }
+
+    private static Number getQuantityFromDocument(Document doc, String key) {
+        try {
+            return doc.getDouble(key);
+        } catch (ClassCastException ex) {
+            return doc.getInteger(key);
+        }
+    }
+
+    private static void fillMealItemWithContent(MealItem mealItem, Document contentDoc) {
+        contentDoc.forEach((key, value) -> mealItem.getItemContents().add(new EventItemContent(Integer.valueOf(key), (double)value)));
+    }
+
+    private static Meal createNewMeal(Document document) {
+        Meal meal = new Meal();
+        Document contentDoc = document.get("content", Document.class);
+        meal.setHelperDateTime( contentDoc.containsKey("timestamp") ? DateUtils.formatMealTimestampDate(contentDoc.getString("timestamp")) : document.getDate("timestampRecorded") );
+        meal.setMealTypeCode( contentDoc.getInteger("itemTypeId") );
+        fillTimestampDates(meal, document);
+        return meal;
     }
 
 }

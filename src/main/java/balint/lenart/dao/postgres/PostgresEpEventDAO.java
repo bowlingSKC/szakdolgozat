@@ -20,6 +20,12 @@ public class PostgresEpEventDAO {
     }
 
     public Observation saveEntity(Observation observation) throws SQLException {
+        observation = saveSuperclass(observation);
+        saveKnownEntity(observation);
+        return observation;
+    }
+
+    private Observation saveSuperclass(Observation observation) throws SQLException {
         PreparedStatement statement = PostgresConnection.getInstance().getConnection().prepareStatement(
                 "INSERT INTO " + getSchemaName() + ".ep_event(episode_id, event_type_code, status_code, ts_specified, ts_recorded, " +
                         "ts_received, ts_updated, ts_deleted, source_device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);", Statement.RETURN_GENERATED_KEYS
@@ -47,8 +53,6 @@ public class PostgresEpEventDAO {
         if( generatedKeys.next() ) {
             observation.setPostgresId( generatedKeys.getLong(1) );
         }
-
-        saveKnownEntity(observation);
         return observation;
     }
 
@@ -77,20 +81,17 @@ public class PostgresEpEventDAO {
         );
         insertMealStatement.setLong(1, observation.getPostgresId());
         insertMealStatement.setDate(2, new Date(new java.util.Date().getTime()));
-        if(observation.getMealTypeCode() != null) {
-            insertMealStatement.setInt(3, observation.getMealTypeCode());
-        } else {
-            insertMealStatement.setNull(3, Types.INTEGER);
-        }
+        insertMealStatement.setInt(3, observation.getMealTypeCode());
         insertMealStatement.setNull(4, Types.FLOAT);
         insertMealStatement.execute();
 
         for(MealItem mealItem : observation.getMealItems()) {
+            MealItem savedSuperMealItem = (MealItem) saveSuperclass(mealItem);
             PreparedStatement insertMealItem = PostgresConnection.getInstance().getConnection().prepareStatement(
                     "INSERT INTO " + getSchemaName() + ".event_mealitem(event_id, item_type_code, item_label, meal_id, quantity, " +
                             "unit_id, unit_label) VALUES(?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS
             );
-            insertMealItem.setLong(1, mealItem.getMeal().getPostgresId());
+            insertMealItem.setLong(1, savedSuperMealItem.getPostgresId());
             insertMealItem.setInt(2, mealItem.getItemTypeCode());
             insertMealItem.setString(3, mealItem.getItemLabel());
             insertMealItem.setLong(4, mealItem.getMeal().getPostgresId());

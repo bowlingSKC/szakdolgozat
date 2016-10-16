@@ -245,8 +245,6 @@ public class Migrator extends Service<Boolean> {
                     }
                 }
             }
-
-            // TODO: 2016.09.23. if devices is empty -> expert user
         }
 
         private Episode migrateEpisodes(User user, Device device) throws SQLException {
@@ -254,31 +252,66 @@ public class Migrator extends Service<Boolean> {
             return postgresEpisodeDAO.saveEntity(episode);
         }
 
+        private boolean isTypeEnabled(ObservationType observationType) {
+            switch (observationType) {
+                case BLOOD_GLUCOSE_RECORD:
+                    return Configuration.getBoolean("migration.items.bloodglucose");
+                case BLOOD_PRESSURE_RECORD:
+                    return Configuration.getBoolean("migration.items.bloodpressure");
+                case CHGI_LOG_RECORD:
+                    return Configuration.getBoolean("migration.items.chgi");
+                case COMMENT_RECORD:
+                    return Configuration.getBoolean("migration.items.comment");
+                case DIETLOG_ANAM_RECORD:
+                    return Configuration.getBoolean("migration.items.dietlog");
+                case LAB_RECORD:
+                    return Configuration.getBoolean("migration.items.lab");
+                case MEAL_LOG_RECORD:
+                    return Configuration.getBoolean("migration.items.meal");
+                case MEDICATION_RECORD:
+                    return Configuration.getBoolean("migration.items.medication");
+                case NOTIFICATION_RECORD:
+                    return Configuration.getBoolean("migration.items.missingfood");
+                case PA_LOG_RECORD:
+                    return Configuration.getBoolean("migration.items.pa");
+                case WEIGHT_RECORD:
+                    return Configuration.getBoolean("migration.items.weight");
+                default:
+                    throw new RuntimeException("Unsupported observation type!");
+            }
+        }
+
         private void migrateObservations(Episode episode, Device device) throws Exception {
             for (ObservationType type : PASSED_TYPES) {
-                List<Observation> observationsByType = mongoObservationDAO.getObservationsByDeviceAndType(device, type);
-                observationsByType.forEach(item -> item.setEpisode(episode));
-                observationsByType.forEach(item -> item.setSourceDevice(device));
+                if( isTypeEnabled(type) ) {
+                    List<Observation> observationsByType = mongoObservationDAO.getObservationsByDeviceAndType(device, type);
+                    observationsByType.forEach(item -> item.setEpisode(episode));
+                    observationsByType.forEach(item -> item.setSourceDevice(device));
 
-                for(Observation observation : observationsByType) {
-                    try {
-                        lastObservationSP = PostgresConnection.getInstance().setSavepoint();
-                        postgresEpEventDAO.saveEntity(observation);
-
-                        updateProgress();
-                        LOGGER.trace("Megfigyelés sikeresen migrálva, PostgresID: " + observation.getPostgresId());
-                        addNewMigrationElement(observation.getType(), true, null);
-                    } catch (Exception ex) {
-                        LOGGER.warn("Hiba történt egy megfigyelés migrálásakkor! MongoID: " + observation.getPostgresId(), ex);
-                        addNewMigrationElement(observation.getType(), false, ex);
-                        addNewMigrationMessage( ex.getClass().getName() );
-                        sumOfFailedEntityMigration.setValue( sumOfFailedEntityMigration.get() + 1 );
-                        if( Configuration.getMigrationLevel().equals(MigrationSettingsLevel.OBSERVATION) ) {
-                            PostgresConnection.getInstance().rollback(lastObservationSP);
-                        } else {
-                            throw ex;
-                        }
+                    for (Observation observation : observationsByType) {
+                        migrateObservation(observation);
                     }
+                }
+            }
+        }
+
+        private void migrateObservation(Observation observation) throws Exception {
+            try {
+                lastObservationSP = PostgresConnection.getInstance().setSavepoint();
+                postgresEpEventDAO.saveEntity(observation);
+
+                updateProgress();
+                LOGGER.trace("Megfigyelés sikeresen migrálva, PostgresID: " + observation.getPostgresId());
+                addNewMigrationElement(observation.getType(), true, null);
+            } catch (Exception ex) {
+                LOGGER.warn("Hiba történt egy megfigyelés migrálásakkor! MongoID: " + observation.getPostgresId(), ex);
+                addNewMigrationElement(observation.getType(), false, ex);
+                addNewMigrationMessage( ex.getClass().getName() );
+                sumOfFailedEntityMigration.setValue( sumOfFailedEntityMigration.get() + 1 );
+                if( Configuration.getMigrationLevel().equals(MigrationSettingsLevel.OBSERVATION) ) {
+                    PostgresConnection.getInstance().rollback(lastObservationSP);
+                } else {
+                    throw ex;
                 }
             }
         }
