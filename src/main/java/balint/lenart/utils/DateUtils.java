@@ -39,4 +39,13 @@ public class DateUtils {
         }
     }
 
+    public static Date formatDayFormat(String str) {
+        try {
+            return new SimpleDateFormat("YYYY-mm-dd").parse(str);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
 }

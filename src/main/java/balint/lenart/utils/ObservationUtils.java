@@ -1,6 +1,7 @@
 package balint.lenart.utils;
 
 import balint.lenart.model.observations.*;
+import balint.lenart.model.observations.helper.EventAnamnesisIllness;
 import balint.lenart.model.observations.helper.EventItemContent;
 import com.google.common.collect.Lists;
 import com.mongodb.Block;
@@ -40,6 +41,8 @@ public class ObservationUtils {
             case MEAL_LOG_RECORD:
                 observation = createMealLogRecord(document);
                 break;
+            case DIETLOG_ANAM_RECORD:
+                observation = createDietAnamRecord(document);
         }
         fillTimestampDates(observation, document);
         return observation;
@@ -64,6 +67,43 @@ public class ObservationUtils {
             }
         }
         throw new RuntimeException("Unhandled observation type: " + documentType);
+    }
+
+    private static Observation createDietAnamRecord(Document document) {
+        Anamnesis anamnesis = new Anamnesis();
+        Document contentDoc = document.get("content", Document.class);
+        anamnesis.setHeight( contentDoc.getInteger("height") );
+        anamnesis.setWeight( getDoubleOrInt(contentDoc, "weight").doubleValue() );
+        if( contentDoc.containsKey("birthDate") ) {
+            anamnesis.setBirthDate( DateUtils.formatDayFormat( contentDoc.getString("birthDate") ) );
+        }
+        if( contentDoc.getBoolean("isMale") ) {
+            anamnesis.setGenderCode(1);
+        } else {
+            anamnesis.setGenderCode(2);
+        }
+        anamnesis.setLifestyleCode( contentDoc.getInteger("activity") );
+        anamnesis.setSportCode( contentDoc.getInteger("activityTime") );
+        anamnesis.setMassChange( contentDoc.getDouble("massDelta") );
+        anamnesis.setMassChangeTime( getDoubleOrInt(contentDoc, "massDeltaTime").intValue() );
+        fillAnamnesisIllnesses(contentDoc, anamnesis);
+        return anamnesis;
+    }
+
+    private static Anamnesis fillAnamnesisIllnesses(Document contentDocument, Anamnesis newEntity) {
+        List<Integer> illnessesIds = (List<Integer>) contentDocument.get("illnesses");
+        if( illnessesIds != null ) {
+            illnessesIds.forEach(value -> newEntity.getIllnesses().add(new EventAnamnesisIllness(value.longValue())));
+        }
+        return newEntity;
+    }
+
+    public static Anamnesis fillAnamnesisWithLabRecord(Anamnesis anamnesis, Document document) {
+        Document contentDoc = document.get("content", Document.class);
+        anamnesis.setEgfr( getDoubleOrInt(contentDoc, "egfr").doubleValue() );
+        anamnesis.setInsulinDose(Double.valueOf(contentDoc.getInteger("dailyInsulinDose")));
+        anamnesis.setSteroidTreatment( contentDoc.getBoolean("steroidTreatment") );
+        return anamnesis;
     }
 
     private static Observation createMealLogRecord(Document document) {
@@ -184,7 +224,7 @@ public class ObservationUtils {
         Document contentDoc = document.get("content", Document.class);
         MealItem mealItem = new MealItem();
         mealItem.setMeal(selectedMeal);
-        mealItem.setQuantity( contentDoc.containsKey("quantity") ? getQuantityFromDocument(contentDoc, "quantity").floatValue() : 1.0f );
+        mealItem.setQuantity( contentDoc.containsKey("quantity") ? getDoubleOrInt(contentDoc, "quantity").floatValue() : 1.0f );
         mealItem.setItemLabel( contentDoc.getString("label") );
         mealItem.setUnitId( contentDoc.getInteger("itemId") );
         mealItem.setUnitLabel( contentDoc.getString("unitLabel") );
@@ -195,7 +235,7 @@ public class ObservationUtils {
         return mealItem;
     }
 
-    private static Number getQuantityFromDocument(Document doc, String key) {
+    private static Number getDoubleOrInt(Document doc, String key) {
         try {
             return doc.getDouble(key);
         } catch (ClassCastException ex) {

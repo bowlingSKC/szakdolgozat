@@ -2,6 +2,7 @@ package balint.lenart.dao.postgres;
 
 import balint.lenart.Configuration;
 import balint.lenart.model.observations.*;
+import balint.lenart.model.observations.helper.EventAnamnesisIllness;
 import balint.lenart.model.observations.helper.EventItemContent;
 
 import java.sql.*;
@@ -71,6 +72,89 @@ public class PostgresEpEventDAO {
             saveMedicationEvent((Medication) observation);
         } else if( observation instanceof Meal ) {
             saveMealEvent((Meal)observation);
+        } else if( observation instanceof Anamnesis ) {
+            saveAnamnesis((Anamnesis)observation);
+        }
+    }
+
+    private void saveAnamnesis(Anamnesis observation) throws SQLException {
+        PreparedStatement insertStatement = PostgresConnection.getInstance().getConnection().prepareStatement(
+                "INSERT INTO " + getSchemaName() + ".event_anamnesis(event_id, height, weight, birth_date, gender_code, " +
+                        "lifestyle_code, mass_change, mass_change_time, egfr, steorid_treatment, insulin_dose) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS
+        );
+        insertStatement.setLong(1, observation.getPostgresId());
+        if( observation.getHeight() != null ) {
+            insertStatement.setInt(2, observation.getHeight());
+        } else {
+            insertStatement.setNull(2, Types.INTEGER);
+        }
+
+        if( observation.getWeight() != null ) {
+            insertStatement.setDouble(3, observation.getWeight());
+        } else {
+            insertStatement.setNull(3, Types.REAL);
+        }
+
+        if( observation.getBirthDate() != null ) {
+            insertStatement.setDate(4, new Date(observation.getBirthDate().getTime()));
+        } else {
+            insertStatement.setNull(4, Types.DATE);
+        }
+
+        if( observation.getGenderCode() != null ) {
+            insertStatement.setInt(5, observation.getGenderCode());
+        } else {
+            insertStatement.setNull(5, Types.INTEGER);
+        }
+
+        if( observation.getLifestyleCode() != null ) {
+            insertStatement.setInt(6, observation.getLifestyleCode());
+        } else {
+            insertStatement.setNull(6, Types.INTEGER);
+        }
+
+        if( observation.getMassChange() != null ) {
+            insertStatement.setDouble(7, observation.getMassChange());
+        } else {
+            insertStatement.setNull(7, Types.REAL);
+        }
+
+        if( observation.getMassChangeTime() != null ) {
+            insertStatement.setInt(8, observation.getMassChangeTime());
+        } else {
+            insertStatement.setNull(8, Types.INTEGER);
+        }
+
+        if( observation.getEgfr() != null ) {
+            insertStatement.setDouble(9, observation.getEgfr());
+        } else {
+            insertStatement.setNull(9, Types.REAL);
+        }
+
+        if( observation.getSteroidTreatment() != null ) {
+            insertStatement.setBoolean(10, observation.getSteroidTreatment());
+        } else {
+            insertStatement.setNull(10, Types.BOOLEAN);
+        }
+
+        if( observation.getInsulinDose() != null ) {
+            insertStatement.setDouble(11, observation.getInsulinDose());
+        } else {
+            insertStatement.setNull(11, Types.REAL);
+        }
+        insertStatement.execute();
+        saveAnamnesisIllnesses(observation);
+    }
+
+    private void saveAnamnesisIllnesses(Anamnesis anamnesis) throws SQLException {
+        for (EventAnamnesisIllness illness : anamnesis.getIllnesses()) {
+            PreparedStatement statement = PostgresConnection.getInstance().getConnection().prepareStatement(
+                    "INSERT INTO " + getSchemaName() + ".event_anamnesis_illness(anamnesis_id, illness_id) VALUES (?, ?)"
+            );
+            statement.setLong(1, anamnesis.getPostgresId());
+            statement.setLong(2, illness.getIllnessId());
+            statement.execute();
         }
     }
 
@@ -91,7 +175,7 @@ public class PostgresEpEventDAO {
                     "INSERT INTO " + getSchemaName() + ".event_mealitem(event_id, item_type_code, item_label, meal_id, quantity, " +
                             "unit_id, unit_label) VALUES(?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS
             );
-            insertMealItem.setLong(1, savedSuperMealItem.getPostgresId());
+            //insertMealItem.setLong(1, savedSuperMealItem.getPostgresId());
             insertMealItem.setInt(2, mealItem.getItemTypeCode());
             insertMealItem.setString(3, mealItem.getItemLabel());
             insertMealItem.setLong(4, mealItem.getMeal().getPostgresId());

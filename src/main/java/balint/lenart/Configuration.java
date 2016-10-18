@@ -1,15 +1,19 @@
 package balint.lenart;
 
 import balint.lenart.model.helper.DatabaseConnectionProperties;
+import balint.lenart.model.observations.ObservationType;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.BooleanUtils;
 
 import java.io.*;
 import java.net.URL;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class Configuration {
 
@@ -104,6 +108,45 @@ public class Configuration {
 
     public static void setMigrationLevel(MigrationSettingsLevel migrationLevel) {
         SETTINGS.put("migration.tranlevel", migrationLevel.name());
+    }
+
+    public static ObservationType[] getEnabledObservationTypes() {
+        List<ObservationType> enabledTypes = Lists.newArrayList();
+        enabledTypes.addAll(
+                Lists.newArrayList(ObservationType.values())
+                        .stream()
+                        .filter(Configuration::isObservationTypeEnabled)
+                        .collect(Collectors.toList()));
+        return enabledTypes.toArray(new ObservationType[enabledTypes.size()]);
+    }
+
+    public static boolean isObservationTypeEnabled(ObservationType observationType) {
+        switch (observationType) {
+            case BLOOD_GLUCOSE_RECORD:
+                return Configuration.getBoolean("migration.items.bloodglucose");
+            case BLOOD_PRESSURE_RECORD:
+                return Configuration.getBoolean("migration.items.bloodpressure");
+            case CHGI_LOG_RECORD:
+                return Configuration.getBoolean("migration.items.chgi");
+            case COMMENT_RECORD:
+                return Configuration.getBoolean("migration.items.comment");
+            case DIETLOG_ANAM_RECORD:
+                return Configuration.getBoolean("migration.items.dietlog");
+            case LAB_RECORD:
+                return Configuration.getBoolean("migration.items.lab");
+            case MEAL_LOG_RECORD:
+                return Configuration.getBoolean("migration.items.meal");
+            case MEDICATION_RECORD:
+                return Configuration.getBoolean("migration.items.medication");
+            case NOTIFICATION_RECORD:
+                return Configuration.getBoolean("migration.items.missingfood");
+            case PA_LOG_RECORD:
+                return Configuration.getBoolean("migration.items.pa");
+            case WEIGHT_RECORD:
+                return Configuration.getBoolean("migration.items.weight");
+            default:
+                throw new RuntimeException("Unsupported observation type!");
+        }
     }
 
     public static boolean getBoolean(String key) {

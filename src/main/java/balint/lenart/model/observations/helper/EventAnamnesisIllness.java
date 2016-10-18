@@ -14,4 +14,7 @@ public class EventAnamnesisIllness {
     private String parameter;
     private Integer paramLabelId;
 
+    public EventAnamnesisIllness(Long illness) {
+        this.illnessId = illness;
+    }
 }

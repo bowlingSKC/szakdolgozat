@@ -11,6 +11,7 @@ import balint.lenart.model.Episode;
 import balint.lenart.model.User;
 import balint.lenart.model.helper.MigrationElement;
 import balint.lenart.model.helper.NamedEnum;
+import balint.lenart.model.observations.Meal;
 import balint.lenart.model.observations.Observation;
 import balint.lenart.model.observations.ObservationType;
 import balint.lenart.utils.FXUtils;
@@ -53,13 +54,6 @@ public class Migrator extends Service<Boolean> {
     // Migratior properties
     private ObservableList<String> migrationMessageProperty = FXCollections.observableArrayList();
     private ObservableList<MigrationElement> migrationElements = FXCollections.observableArrayList();
-
-    // Accept only these entities
-    public static final List<ObservationType> PASSED_TYPES = Lists.newArrayList(
-            ObservationType.NOTIFICATION_RECORD, ObservationType.WEIGHT_RECORD, ObservationType.BLOOD_GLUCOSE_RECORD,
-            ObservationType.BLOOD_PRESSURE_RECORD, ObservationType.PA_LOG_RECORD, ObservationType.MEDICATION_RECORD,
-            ObservationType.MEAL_LOG_RECORD
-    );
 
     // Savepoints
     private Savepoint lastDeviceSP = null;
@@ -107,7 +101,8 @@ public class Migrator extends Service<Boolean> {
         migrationElements.clear();
     }
 
-    private void addNewMigrationElement(NamedEnum type, boolean success, Throwable ex) {
+    private synchronized void addNewMigrationElement(NamedEnum type, boolean success, Throwable ex) {
+        assert (success && ex == null) || (!success && ex != null);
         if(Configuration.getBoolean("migration.show.entities")) {
             migrationElements.add(new MigrationElement(new Date(), type, success, ex));
         }
@@ -139,7 +134,11 @@ public class Migrator extends Service<Boolean> {
         }
 
         private void updateProgress() {
-            sumOfMigratedEntityCounter.setValue( sumOfMigratedEntityCounter.get() + 1 );
+            updateProgress(1L);
+        }
+
+        private void updateProgress(long value) {
+            sumOfMigratedEntityCounter.setValue( sumOfMigratedEntityCounter.get() + value );
             FXUtils.runInFxThread(() -> updateProgress(sumOfMigratedEntityCounter.doubleValue(), sumOfEntityInMongo.doubleValue()));
         }
 
@@ -191,6 +190,9 @@ public class Migrator extends Service<Boolean> {
         private void migrateUsers(User user) throws SQLException {
             try {
                 User persisted = postgresUserDAO.saveEntity(user);
+                if( "admin".equals(user.getType()) || "diet".equals(user.getType()) || "doctor".equals(user.getType()) ) {
+                    postgresUserDAO.addToExpertUser(persisted);
+                }
                 updateProgress();
 
                 migrateDevices(persisted);
@@ -201,7 +203,6 @@ public class Migrator extends Service<Boolean> {
                 LOGGER.trace("Felhasználó sikeresen migrálva, MongoID: " + user.getMongoId() + ", PostgresID: " + user.getPostgresId());
             } catch (SQLException ex) {
                 PostgresConnection.getInstance().rollback();
-                ex.printStackTrace();
                 sumOfFailedEntityMigration.setValue( sumOfFailedEntityMigration.get() + 1 );
 
                 LOGGER.warn("Hiba történt egy felhasználó migrálásakkor! MongoID: " + user.getMongoId(), ex);
@@ -216,7 +217,15 @@ public class Migrator extends Service<Boolean> {
         }
 
         private Long calculateMigrationsProcess() {
-            return mongoDeviceDAO.count() + mongoObservationDAO.count() + mongoUserDAO.count();
+            return mongoDeviceDAO.count() + calculateEnabledObservationTypes() + mongoUserDAO.count();
+        }
+
+        private Long calculateEnabledObservationTypes() {
+            Long count = 0L;
+            for(ObservationType enabledType : Configuration.getEnabledObservationTypes()) {
+                count += mongoObservationDAO.countByTypes(enabledType);
+            }
+            return count;
         }
 
         private void migrateDevices(User owner) throws Exception {
@@ -252,45 +261,14 @@ public class Migrator extends Service<Boolean> {
             return postgresEpisodeDAO.saveEntity(episode);
         }
 
-        private boolean isTypeEnabled(ObservationType observationType) {
-            switch (observationType) {
-                case BLOOD_GLUCOSE_RECORD:
-                    return Configuration.getBoolean("migration.items.bloodglucose");
-                case BLOOD_PRESSURE_RECORD:
-                    return Configuration.getBoolean("migration.items.bloodpressure");
-                case CHGI_LOG_RECORD:
-                    return Configuration.getBoolean("migration.items.chgi");
-                case COMMENT_RECORD:
-                    return Configuration.getBoolean("migration.items.comment");
-                case DIETLOG_ANAM_RECORD:
-                    return Configuration.getBoolean("migration.items.dietlog");
-                case LAB_RECORD:
-                    return Configuration.getBoolean("migration.items.lab");
-                case MEAL_LOG_RECORD:
-                    return Configuration.getBoolean("migration.items.meal");
-                case MEDICATION_RECORD:
-                    return Configuration.getBoolean("migration.items.medication");
-                case NOTIFICATION_RECORD:
-                    return Configuration.getBoolean("migration.items.missingfood");
-                case PA_LOG_RECORD:
-                    return Configuration.getBoolean("migration.items.pa");
-                case WEIGHT_RECORD:
-                    return Configuration.getBoolean("migration.items.weight");
-                default:
-                    throw new RuntimeException("Unsupported observation type!");
-            }
-        }
-
         private void migrateObservations(Episode episode, Device device) throws Exception {
-            for (ObservationType type : PASSED_TYPES) {
-                if( isTypeEnabled(type) ) {
-                    List<Observation> observationsByType = mongoObservationDAO.getObservationsByDeviceAndType(device, type);
-                    observationsByType.forEach(item -> item.setEpisode(episode));
-                    observationsByType.forEach(item -> item.setSourceDevice(device));
+            for (ObservationType type : Configuration.getEnabledObservationTypes()) {
+                List<Observation> observationsByType = mongoObservationDAO.getObservationsByDeviceAndType(device, type);
+                observationsByType.forEach(item -> item.setEpisode(episode));
+                observationsByType.forEach(item -> item.setSourceDevice(device));
 
-                    for (Observation observation : observationsByType) {
-                        migrateObservation(observation);
-                    }
+                for (Observation observation : observationsByType) {
+                    migrateObservation(observation);
                 }
             }
         }
@@ -300,7 +278,11 @@ public class Migrator extends Service<Boolean> {
                 lastObservationSP = PostgresConnection.getInstance().setSavepoint();
                 postgresEpEventDAO.saveEntity(observation);
 
-                updateProgress();
+                if( observation instanceof Meal ) {
+                    updateProgress( ((Meal) observation).getMealItems().size() );
+                } else {
+                    updateProgress();
+                }
                 LOGGER.trace("Megfigyelés sikeresen migrálva, PostgresID: " + observation.getPostgresId());
                 addNewMigrationElement(observation.getType(), true, null);
             } catch (Exception ex) {

@@ -17,6 +17,7 @@ import javafx.scene.layout.HBox;
 import org.apache.log4j.Logger;
 
 import java.util.Date;
+import java.util.List;
 
 public class MigrationLayoutController {
 
@@ -57,10 +58,12 @@ public class MigrationLayoutController {
 
     private void bindMigratorProperties() {
         migrator.migrationMessageProperty().addListener((ListChangeListener<String>) c -> {
-            if( c.next() && c.getAddedSize() > 0 ) {
-                String newMessage = c.getAddedSubList().get(0);
-                migrationOutput.appendText(DateUtils.formatMsecPrecision(new Date()) + " - " + newMessage + "\n");
-            }
+            Platform.runLater(() -> {
+                while( c.next() ) {
+                    String newMessage = c.getAddedSubList().get(0);
+                    migrationOutput.appendText(DateUtils.formatMsecPrecision(new Date()) + " - " + newMessage + "\n");
+                }
+            });
         });
 
         migrator.sumOfEntityInMongoProperty().addListener((observable, oldValue, newValue) -> {
@@ -88,9 +91,8 @@ public class MigrationLayoutController {
 
         migrator.migrationElementProperty().addListener((ListChangeListener<MigrationElement>) c -> {
             Platform.runLater(() -> {
-                if( c.next() && c.getAddedSize() != 0 ) {
-                    MigrationElement newElement = c.getAddedSubList().get(0);
-                    migrationTable.getItems().add( newElement );
+                while( c.next() ) {
+                    migrationTable.getItems().addAll(c.getAddedSubList());
                 }
             });
         });

@@ -13,8 +13,12 @@ import java.util.Random;
 
 public class PostgresUserDAO {
 
+    private String getSchemaName() {
+        return Configuration.get("postgres.connection.schema");
+    }
+
     private String getTableName() {
-        return Configuration.get("postgres.connection.schema") + ".user";
+        return getSchemaName() + ".user";
     }
 
     public Long count() throws SQLException {
@@ -69,6 +73,14 @@ public class PostgresUserDAO {
         } else {
             return null;
         }
+    }
+
+    public void addToExpertUser(User user) throws SQLException {
+        PreparedStatement statement = PostgresConnection.getInstance().getConnection().prepareStatement(
+                "INSERT INTO " + getSchemaName() + ".expert_user(user_id) VALUES (?)"
+        );
+        statement.setLong(1, user.getPostgresId());
+        statement.execute();
     }
 
 }
