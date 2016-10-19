@@ -175,7 +175,7 @@ public class PostgresEpEventDAO {
                     "INSERT INTO " + getSchemaName() + ".event_mealitem(event_id, item_type_code, item_label, meal_id, quantity, " +
                             "unit_id, unit_label) VALUES(?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS
             );
-            //insertMealItem.setLong(1, savedSuperMealItem.getPostgresId());
+            insertMealItem.setLong(1, savedSuperMealItem.getPostgresId());
             insertMealItem.setInt(2, mealItem.getItemTypeCode());
             insertMealItem.setString(3, mealItem.getItemLabel());
             insertMealItem.setLong(4, mealItem.getMeal().getPostgresId());
