@@ -79,7 +79,7 @@ public class MigrationLayoutController {
         });
 
         migrator.setOnSucceeded(event -> {
-            NotificationUtil.showNotification(Alert.AlertType.INFORMATION, "Migrációs folyamat", "A migrációs folyamat siekresen véget ért!", "");
+            NotificationUtil.showNotification(Alert.AlertType.INFORMATION, "Migrációs folyamat", "A migrációs folyamat véget ért!", "");
             changeRunningState(false);
         });
 
@@ -91,7 +91,7 @@ public class MigrationLayoutController {
 
         migrator.migrationElementProperty().addListener((ListChangeListener<MigrationElement>) c -> {
             Platform.runLater(() -> {
-                while( c.next() ) {
+                if( c.next() ) {
                     migrationTable.getItems().addAll(c.getAddedSubList());
                 }
             });
@@ -184,7 +184,6 @@ public class MigrationLayoutController {
                 setText( item ? "Igen" : "Nem" );
                 if( !item ) {
                     setTooltip(new Tooltip( getExceptionMessage(getTableRow()) ));
-                    setStyle("-fx-background-color: red; -fx-text-fill: white;");
                 }
             }
         }

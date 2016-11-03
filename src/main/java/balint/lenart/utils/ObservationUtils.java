@@ -1,14 +1,17 @@
 package balint.lenart.utils;
 
+import balint.lenart.model.Comment;
 import balint.lenart.model.observations.*;
 import balint.lenart.model.observations.helper.EventAnamnesisIllness;
 import balint.lenart.model.observations.helper.EventItemContent;
+import balint.lenart.model.observations.helper.EventItemParContent;
 import com.google.common.collect.Lists;
 import com.mongodb.Block;
 import com.mongodb.client.FindIterable;
 import org.apache.commons.lang3.BooleanUtils;
 import org.bson.Document;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -45,13 +48,50 @@ public class ObservationUtils {
                 observation = createDietAnamRecord(document);
         }
         fillTimestampDates(observation, document);
+        fillCodesByObservation(observation);
         return observation;
+    }
+
+    private static void fillCodesByObservation(Observation observation) {
+        observation.setEventTypeCode(getEventTypeCodeByObservation(observation));
+        if( observation.getTsDeleted() != null ) {
+            observation.setStatusCode(3);
+        } else {
+            observation.setStatusCode(1);
+        }
+    }
+
+    private static int getEventTypeCodeByObservation(Observation observation) {
+        if( observation instanceof Anamnesis ) {
+            return 1;
+        } else if( observation instanceof BloodPressureMeas ) {
+            return 2;
+        } else if( observation instanceof Meal ) {
+            return 3;
+        } else if( observation instanceof MealItem ) {
+            return 4;
+        } else if( observation instanceof PhysicalEvent ) {
+            return 5;
+        } else if( observation instanceof GlucoseMeas ) {
+            return 6;
+        } else if( observation instanceof Medication ) {
+            return 7;
+        } else if( observation instanceof WeightMeas ) {
+            return 8;
+        } else if( observation instanceof Comment) {
+            return 9;
+        } else if( observation instanceof MissingFood ) {
+            return 11;
+        }
+
+        throw new RuntimeException("Unhandled observation type: " + observation.getClass().getName());
     }
 
     private static void fillTimestampDates(Observation observation, Document document) {
         observation.setTsReceived( document.getDate("timestampIn") );
         observation.setTsRecorded( document.getDate("timestampIn") );
         observation.setTsSpecified( document.getDate("timestampRecorded") );
+        observation.setTsUpdated( document.getDate("timestampUpdated") );
         // check softdeleted
         if(BooleanUtils.isTrue( document.getBoolean("deleted") )) {
             observation.setTsDeleted( document.getDate("timestampUpdated") );
@@ -170,7 +210,7 @@ public class ObservationUtils {
 
     private static GlucoseMeas createGlucoseMeas(Document document) {
         GlucoseMeas event = new GlucoseMeas();
-        event.setGlucoseData( document.get("content", Document.class).getDouble("bloodGlucose") );
+        event.setGlucoseData( getDoubleOrInt(document.get("content", Document.class), "bloodGlucose").doubleValue() );
         return event;
     }
 
@@ -192,14 +232,11 @@ public class ObservationUtils {
         return event;
     }
 
-    public static List<Observation> groupMealItems(FindIterable<Document> mongoMealObservations) {
-        List<Observation> observations = Lists.newArrayList();
+    public static List<Meal> groupMealItems(FindIterable<Document> mongoMealObservations) {
         List<Meal> helperMealList = Lists.newArrayList();
         mongoMealObservations.forEach((Block<Document>) document -> {
-            Date refDate = document.get("content", Document.class).containsKey("timestamp") ?
-                    DateUtils.formatMealTimestampDate(document.get("content", Document.class).getString("timestamp")) :
-                    document.getDate("timestampRecorded");
-            int typeCode = document.get("content", Document.class).getInteger("itemTypeId");
+            Date refDate = document.getDate("timestampRecorded");
+            int typeCode = getMealItemTypeFromString(document.get("content", Document.class).getString("recordType"));
             Optional<Meal> mealOptional = helperMealList
                     .stream()
                     .filter(item -> DateUtils.isSameDay(item.getHelperDateTime(), refDate) &&
@@ -216,8 +253,32 @@ public class ObservationUtils {
 
             selectedMeal.getMealItems().add( createNewMealItem(selectedMeal, document) );
         });
-        observations.addAll(helperMealList);
-        return observations;
+        sortMealItems(helperMealList);
+        return helperMealList;
+    }
+
+    private static void sortMealItems(List<Meal> list) {
+        for (Meal meal : list) {
+            meal.getMealItems().sort((i1, i2) -> i1.getTsRecorded().compareTo(i2.getTsRecorded()));
+            meal.setTsMealEnd( meal.getMealItems().get( meal.getMealItems().size() -  1).getTsRecorded() );
+        }
+    }
+
+    private static int getMealItemTypeFromString(String type) {
+        switch (type) {
+            case "breakfast":
+                return 1;
+            case "elevenses":
+                return 2;
+            case "lunch":
+                return 3;
+            case "snack":
+                return 4;
+            case "dinner":
+                return 5;
+            default:
+                return 6;
+        }
     }
 
     private static MealItem createNewMealItem(Meal selectedMeal, Document document) {
@@ -228,6 +289,7 @@ public class ObservationUtils {
         mealItem.setItemLabel( contentDoc.getString("label") );
         mealItem.setUnitId( contentDoc.getInteger("itemId") );
         mealItem.setUnitLabel( contentDoc.getString("unitLabel") );
+        mealItem.setHelperMongoId( document.getObjectId("_id").toString() );
         if( contentDoc.containsKey("content") ) {
             fillMealItemWithContent(mealItem, contentDoc.get("content", Document.class));
         }
@@ -256,4 +318,12 @@ public class ObservationUtils {
         return meal;
     }
 
+    public static void fillMealItemWithChgis(MealItem item, ArrayList<Document> chgiDocs) {
+        for (Document doc : chgiDocs) {
+            Document contentDoc = doc.get("content", Document.class).get("content", Document.class);
+            if( contentDoc != null ) {
+                contentDoc.forEach((key, value) -> item.getItemParContents().add(new EventItemParContent(Long.valueOf(key), null, (double)value)));
+            }
+        }
+    }
 }

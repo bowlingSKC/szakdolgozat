@@ -166,5 +166,7 @@ public class Configuration {
         String FAILED_MIGRATION_LABEL = "Sikertelenül migrált entitások száma\n" +
                 "Nem veszi figyelembe a sikertelenül migrált entitáshoz tatrozó további entitások számát";
         String ALL_MIGRATION_LABEL = "Az összes entitások száma MondoDB-ben";
+
+        String ICON_PATH = "imgs/logo.png";
     }
 }

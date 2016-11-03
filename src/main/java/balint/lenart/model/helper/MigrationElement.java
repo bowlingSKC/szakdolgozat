@@ -13,7 +13,7 @@ import java.util.Date;
 public class MigrationElement {
 
     public static enum EntityType implements NamedEnum {
-        USER("Felhasználó"), DEVICE("Eszköz");
+        USER("Felhasználó"), DEVICE("Eszköz"), GROUP("Felhasználói csoport"), USER_GROUP("Felhasználó - csoport összerendelés");
 
         private final String name;
 

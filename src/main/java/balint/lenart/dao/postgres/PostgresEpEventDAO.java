@@ -4,6 +4,8 @@ import balint.lenart.Configuration;
 import balint.lenart.model.observations.*;
 import balint.lenart.model.observations.helper.EventAnamnesisIllness;
 import balint.lenart.model.observations.helper.EventItemContent;
+import balint.lenart.model.observations.helper.EventItemParContent;
+import org.apache.commons.lang3.StringUtils;
 
 import java.sql.*;
 
@@ -32,20 +34,20 @@ public class PostgresEpEventDAO {
                         "ts_received, ts_updated, ts_deleted, source_device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);", Statement.RETURN_GENERATED_KEYS
         );
         statement.setLong(1, observation.getEpisode().getPostgresId());
-        statement.setInt(2, 0);     // FIXME: 2016.09.13. replace this const
-        statement.setInt(3, 1);     // FIXME: 2016.09.19. replace this const
-        statement.setDate(4, new Date(observation.getTsSpecified().getTime()));
-        statement.setDate(5, new Date(observation.getTsRecorded().getTime()));
-        statement.setDate(6, new Date(observation.getTsReceived().getTime()));
+        statement.setInt(2, observation.getEventTypeCode());
+        statement.setInt(3, observation.getStatusCode());
+        statement.setTimestamp(4, new Timestamp(observation.getTsSpecified().getTime()));
+        statement.setTimestamp(5, new Timestamp(observation.getTsRecorded().getTime()));
+        statement.setTimestamp(6, new Timestamp(observation.getTsReceived().getTime()));
         if( observation.getTsUpdated() != null ) {
-            statement.setDate(7, new Date(observation.getTsUpdated().getTime()));
+            statement.setTimestamp(7, new Timestamp(observation.getTsUpdated().getTime()));
         } else {
-            statement.setDate(7, null);
+            statement.setNull(7, Types.TIMESTAMP);
         }
         if( observation.getTsDeleted() != null ) {
-            statement.setDate(8, new Date(observation.getTsDeleted().getTime()));
+            statement.setTimestamp(8, new Timestamp(observation.getTsDeleted().getTime()));
         } else {
-            statement.setDate(8, null);
+            statement.setNull(8, Types.TIMESTAMP);
         }
         statement.setLong(9, observation.getSourceDevice().getPostgresId());
         statement.execute();
@@ -164,7 +166,7 @@ public class PostgresEpEventDAO {
                         "VALUES(?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS
         );
         insertMealStatement.setLong(1, observation.getPostgresId());
-        insertMealStatement.setDate(2, new Date(new java.util.Date().getTime()));
+        insertMealStatement.setTimestamp(2, new Timestamp(observation.getTsMealEnd().getTime()));
         insertMealStatement.setInt(3, observation.getMealTypeCode());
         insertMealStatement.setNull(4, Types.FLOAT);
         insertMealStatement.execute();
@@ -195,6 +197,17 @@ public class PostgresEpEventDAO {
                     insertEventItem.setLong(2, eventItemContent.getNutrientId());
                     insertEventItem.setDouble(3, eventItemContent.getQuantity());
                     insertEventItem.execute();
+                }
+
+                for (EventItemParContent parContent : mealItem.getItemParContents()) {
+                    PreparedStatement statement = PostgresConnection.getInstance().getConnection().prepareStatement(
+                            "INSERT INTO " + getSchemaName() + ".event_item_par_content(item_id, nutr_id, parameter, quantity) VALUES(?, ?, ?, ?)"
+                    );
+                    statement.setLong(1, mealItemIdResult);
+                    statement.setLong(2, parContent.getNutrientId());
+                    statement.setString(3, parContent.getParameter());
+                    statement.setDouble(4, parContent.getQuantity());
+                    statement.execute();
                 }
             }
         }

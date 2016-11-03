@@ -15,8 +15,8 @@ public abstract class Observation {
 
     protected Long postgresId;
     protected Episode episode;
-    protected Integer eventTypeCode = 0;      // FIXME: 2016.09.13. replace this const
-    protected Integer statusCode = 0;         // FIXME: 2016.09.13. replace this const
+    protected int eventTypeCode;
+    protected int statusCode = 0;
     protected Date tsSpecified;
     protected Date tsRecorded;
     protected Date tsReceived;

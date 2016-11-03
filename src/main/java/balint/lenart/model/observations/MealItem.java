@@ -25,6 +25,8 @@ public class MealItem extends Observation {
     private List<EventItemContent> itemContents = Lists.newArrayList();
     private List<EventItemParContent> itemParContents = Lists.newArrayList();
 
+    private String helperMongoId;
+
     @Override
     public ObservationType getType() {
         return ObservationType.MEAL_LOG_RECORD;

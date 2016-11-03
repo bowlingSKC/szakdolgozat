@@ -1,9 +1,8 @@
 package balint.lenart.dao.mongo;
 
+import balint.lenart.Configuration;
 import balint.lenart.model.Device;
-import balint.lenart.model.observations.Anamnesis;
-import balint.lenart.model.observations.Observation;
-import balint.lenart.model.observations.ObservationType;
+import balint.lenart.model.observations.*;
 import balint.lenart.utils.ObservationUtils;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -62,7 +61,11 @@ public class MongoObservationDAO {
                 .append("type", type.getClassName());
         FindIterable<Document> documents = observationCollection.find(filter);
         if( ObservationType.MEAL_LOG_RECORD.equals(type) ) {
-            return ObservationUtils.groupMealItems(documents);
+            List<Meal> meals = ObservationUtils.groupMealItems(documents);
+            if(Configuration.isObservationTypeEnabled(ObservationType.CHGI_LOG_RECORD)) {
+                meals.forEach(this::fillMealWithCHGI);
+            }
+            return Lists.newArrayList(meals);
         } else if( ObservationType.DIETLOG_ANAM_RECORD.equals(type) ) {
             Anamnesis latestAnamnesis = getLatestAnamnesisByDevice(device);
             return latestAnamnesis == null ? Lists.newArrayList() : Lists.newArrayList(latestAnamnesis);
@@ -72,6 +75,17 @@ public class MongoObservationDAO {
                 observations.add(ObservationUtils.fillByDocument(doc));
             }
             return observations;
+        }
+    }
+
+    private void fillMealWithCHGI(Meal meal) {
+        for (MealItem item : meal.getMealItems()) {
+            Document filter = new Document("relatedObjectIds", new Document("$exists", "1"))
+                    .append("relatedObjectIds", new Document("$in", Lists.newArrayList(new ObjectId(item.getHelperMongoId()))));
+            ArrayList<Document> chgiDocs = observationCollection.find(filter).into(new ArrayList<>());
+            if( chgiDocs != null && !chgiDocs.isEmpty() ) {
+                ObservationUtils.fillMealItemWithChgis(item, chgiDocs);
+            }
         }
     }
 

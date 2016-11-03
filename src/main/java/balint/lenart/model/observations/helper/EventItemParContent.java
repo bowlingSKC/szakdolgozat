@@ -1,42 +1,16 @@
 package balint.lenart.model.observations.helper;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class EventItemParContent {
 
-    private int nutrientId;
+    private long nutrientId;
     private String parameter;
-    private float quantity;
+    private double quantity;
 
-    public EventItemParContent() {
-
-    }
-
-    public EventItemParContent(int nutrientId, String parameter, float quantity) {
-        this.nutrientId = nutrientId;
-        this.parameter = parameter;
-        this.quantity = quantity;
-    }
-
-    public int getNutrientId() {
-        return nutrientId;
-    }
-
-    public void setNutrientId(int nutrientId) {
-        this.nutrientId = nutrientId;
-    }
-
-    public String getParameter() {
-        return parameter;
-    }
-
-    public void setParameter(String parameter) {
-        this.parameter = parameter;
-    }
-
-    public float getQuantity() {
-        return quantity;
-    }
-
-    public void setQuantity(float quantity) {
-        this.quantity = quantity;
-    }
 }

@@ -9,8 +9,7 @@
    <center>
       <TabPane prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
         <tabs>
-          <Tab fx:id="summaryTab" text="Összefoglaló" />
-            <Tab fx:id="actionsTab" text="Műveletek" />
+            <Tab fx:id="actionsTab" text="Migrációs folyamat" />
             <Tab fx:id="postgresTab" text="Postgres adatbázis" />
           <Tab fx:id="settingsTab" text="Beállítások" />
             <Tab fx:id="logTab" text="Logok" />

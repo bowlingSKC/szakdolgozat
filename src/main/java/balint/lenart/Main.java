@@ -6,6 +6,7 @@ import balint.lenart.utils.DbUtil;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 import org.apache.log4j.Logger;
@@ -24,6 +25,7 @@ public class Main extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
         this.primaryStage = primaryStage;
+        this.primaryStage.getIcons().add(new Image(Configuration.Constants.ICON_PATH));
 
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/layouts/start/password.fxml"));
         Pane rootLayout = loader.load();

@@ -1,5 +1,8 @@
 package balint.lenart.controllers.main;
 
+import balint.lenart.services.Migrator;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
@@ -15,7 +18,6 @@ import java.io.IOException;
  */
 public class RootLayoutController {
 
-    @FXML private Tab summaryTab;
     @FXML private Tab actionsTab;
     @FXML private Tab postgresTab;
     @FXML private Tab settingsTab;
@@ -27,6 +29,17 @@ public class RootLayoutController {
         postgresTab.setContent( getTabContent("main/postgresQueryLayout.fxml") );
         settingsTab.setContent( getTabContent("settings/settings.fxml") );
         logTab.setContent( getTabContent("main/logsViewer.fxml") );
+
+        bindTabEnable();
+    }
+
+    private void bindTabEnable() {
+        Migrator migrator = Migrator.getInstance();
+        migrator.runningProperty().addListener((observable, oldValue, newValue) -> {
+            postgresTab.setDisable(newValue);
+            settingsTab.setDisable(newValue);
+            logTab.setDisable(newValue);
+        });
     }
 
     private Node getTabContent(String fxmlFileName) {

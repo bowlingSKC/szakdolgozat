@@ -16,9 +16,9 @@ public class PostgresEpisodeDAO {
                 "INSERT INTO " + getTableName() + "(user_id, start_date, ep_type_code) VALUES (?, ?, ?);", Statement.RETURN_GENERATED_KEYS);
         statement.setLong(1, episode.getUser().getPostgresId());
         if( episode.getStartDate() != null ) {
-            statement.setDate(2, new Date(episode.getStartDate().getTime()));
+            statement.setTimestamp(2, new Timestamp(episode.getStartDate().getTime()));
         } else {
-            statement.setDate(2, new Date(new java.util.Date().getTime()));
+            statement.setTimestamp(2, new Timestamp(new java.util.Date().getTime()));
         }
 
         statement.setInt(3, 0); // FIXME: 2016.09.12. replace this cons

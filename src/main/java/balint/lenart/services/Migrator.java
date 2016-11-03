@@ -14,6 +14,7 @@ import balint.lenart.model.helper.NamedEnum;
 import balint.lenart.model.observations.Meal;
 import balint.lenart.model.observations.Observation;
 import balint.lenart.model.observations.ObservationType;
+import balint.lenart.utils.DateUtils;
 import balint.lenart.utils.FXUtils;
 import com.google.common.collect.Lists;
 import javafx.beans.property.LongProperty;
@@ -263,12 +264,14 @@ public class Migrator extends Service<Boolean> {
 
         private void migrateObservations(Episode episode, Device device) throws Exception {
             for (ObservationType type : Configuration.getEnabledObservationTypes()) {
-                List<Observation> observationsByType = mongoObservationDAO.getObservationsByDeviceAndType(device, type);
-                observationsByType.forEach(item -> item.setEpisode(episode));
-                observationsByType.forEach(item -> item.setSourceDevice(device));
+                if( !ObservationType.LAB_RECORD.equals(type) ) {
+                    List<Observation> observationsByType = mongoObservationDAO.getObservationsByDeviceAndType(device, type);
+                    observationsByType.forEach(item -> item.setEpisode(episode));
+                    observationsByType.forEach(item -> item.setSourceDevice(device));
 
-                for (Observation observation : observationsByType) {
-                    migrateObservation(observation);
+                    for (Observation observation : observationsByType) {
+                        migrateObservation(observation);
+                    }
                 }
             }
         }
@@ -301,7 +304,7 @@ public class Migrator extends Service<Boolean> {
         private void beforeFinish() {
             migrationMessageProperty.add("Sikeresen migrált entitások száma: " + sumOfMigratedEntityCounter.get());
             migrationMessageProperty.add("Sikertelenül migrált entitások száma: " + sumOfFailedEntityMigration.get());
-
+            migrationMessageProperty.add("Migráció vége: " + DateUtils.formatMsecPrecision(new Date()));
         }
 
         @Override
